@@ -83,6 +83,13 @@ Runs extraction, social media enrichment, phone/email validation, geographical d
 ./orchestrator.py export -o output_data -q "cafe" -r "Jakarta Selatan"
 ```
 
+### 4. Run Dashboard Web UI
+Launches a Flask web server on port 8080 to interactively trigger runs, view leads, and export datasets:
+```bash
+python3 server.py
+```
+Open `http://localhost:8080` in your web browser.
+
 ## 📊 Output Formats
 
 - **CSV**: Encoded with UTF-8 BOM, allowing immediate double-click import into Excel with correct character displays.

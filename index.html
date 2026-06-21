@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cold Data Control - Polaris x Swiss Dashboard</title>
+    <!-- Tailwind CSS (Default styling framework) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome (Default icon framework) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Inter & Space Grotesk (Premium typography combination) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Space Grotesk', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Polaris x Swiss design stylesheet rules */
+        body {
+            background-color: #fbfbfb;
+            font-family: 'Inter', sans-serif;
+            color: #111111;
+        }
+        
+        h1, h2, h3, .font-display {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        /* Flat borders and crisp alignments (Swiss) */
+        .swiss-grid {
+            display: grid;
+            gap: 1.5rem;
+            grid-template-columns: repeat(12, minmax(0, 1fr));
+        }
+
+        /* Clean cards with low-saturation borders (Polaris) */
+        .polaris-card {
+            background: #ffffff;
+            border: 1px solid #e1e3e5;
+            border-radius: 4px;
+            padding: 1.25rem;
+            box-shadow: none;
+            transition: border-color 0.15s ease-in-out;
+        }
+        
+        .polaris-card:hover {
+            border-color: #a1a3a5;
+        }
+
+        /* Stark typography emphasis (Swiss) */
+        .swiss-header {
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            text-transform: uppercase;
+        }
+
+        /* Table header styling (Polaris) */
+        th {
+            font-weight: 600;
+            color: #4a4a4a;
+            border-bottom: 1px solid #e1e3e5;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+        }
+        
+        td {
+            border-bottom: 1px solid #f1f3f5;
+            font-size: 0.875rem;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #fbfbfb;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #e1e3e5;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #c1c3c5;
+        }
+    </style>
+</head>
+<body class="p-6">
+    <div class="max-w-7xl mx-auto">
+        <!-- Dashboard Topbar (Stark Swiss layout) -->
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center pb-6 mb-8 border-b-2 border-black">
+            <div>
+                <h1 class="text-3xl swiss-header font-display font-bold leading-none">Cold Data Control</h1>
+                <p class="text-xs text-neutral-500 mt-1 uppercase tracking-widest font-mono">Status: Polaris x Swiss Operational System</p>
+            </div>
+            
+            <div class="flex items-center gap-4 mt-4 md:mt-0 font-mono text-xs">
+                <div class="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded">
+                    <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>Database: Connected</span>
+                </div>
+                <div class="px-3 py-1.5 bg-neutral-100 border border-neutral-200 text-neutral-800 rounded flex gap-2">
+                    <span class="text-neutral-500"><i class="fa-solid fa-server"></i></span>
+                    <span id="sys-load">Load: 0.00</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- KPI Strip (Pastel palette cards) -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div class="polaris-card bg-blue-50 border border-blue-200 flex flex-col justify-between">
+                <span class="text-xs font-mono text-blue-700 uppercase tracking-wider">Clean Leads</span>
+                <span class="text-4xl font-display font-bold mt-2 text-blue-900" id="stat-clean">0</span>
+            </div>
+            <div class="polaris-card bg-purple-50 border border-purple-200 flex flex-col justify-between">
+                <span class="text-xs font-mono text-purple-700 uppercase tracking-wider">Duplicates Ignored</span>
+                <span class="text-4xl font-display font-bold mt-2 text-purple-900" id="stat-duplicates">0</span>
+            </div>
+            <div class="polaris-card bg-amber-50 border border-amber-200 flex flex-col justify-between">
+                <span class="text-xs font-mono text-amber-700 uppercase tracking-wider">Total Scrapes</span>
+                <span class="text-4xl font-display font-bold mt-2 text-amber-900" id="stat-runs">0</span>
+            </div>
+            <div class="polaris-card bg-rose-50 border border-rose-200 flex flex-col justify-between">
+                <span class="text-xs font-mono text-rose-700 uppercase tracking-wider">Scraper Engine</span>
+                <span class="text-xl font-display font-bold mt-3 text-rose-900" id="stat-engine">Ready</span>
+            </div>
+        </section>
+
+        <!-- Main Workspace Grid -->
+        <main class="swiss-grid">
+            <!-- Left panel: Controls (Columns 1-4) -->
+            <div class="col-span-12 lg:col-span-4 flex flex-col gap-6">
+                <!-- Extraction Form (Polaris form element) -->
+                <div class="polaris-card">
+                    <h2 class="text-lg font-display font-bold mb-4 border-b border-neutral-100 pb-2"><i class="fa-solid fa-magnifying-glass-location mr-2"></i>Trigger Extraction</h2>
+                    <form id="extract-form" class="flex flex-col gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold mb-1 text-neutral-700 uppercase">Search Category / Query</label>
+                            <input type="text" id="extract-query" placeholder="e.g. cafe, hotel, restaurant" required 
+                                class="w-full text-sm px-3 py-2 border border-neutral-300 rounded focus:outline-none focus:border-black font-mono">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold mb-1 text-neutral-700 uppercase">Region / Area Name</label>
+                            <input type="text" id="extract-region" placeholder="e.g. Jakarta Selatan" required
+                                class="w-full text-sm px-3 py-2 border border-neutral-300 rounded focus:outline-none focus:border-black font-mono">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold mb-1 text-neutral-700 uppercase">Limit Results (Optional)</label>
+                            <select id="extract-limit" class="w-full text-sm px-3 py-2 border border-neutral-300 rounded bg-white focus:outline-none focus:border-black font-mono">
+                                <option value="">Unlimited</option>
+                                <option value="10">Top 10</option>
+                                <option value="50">Top 50</option>
+                                <option value="100">Top 100</option>
+                            </select>
+                        </div>
+                        <button type="submit" id="extract-btn" class="w-full bg-black hover:bg-neutral-800 text-white font-mono text-sm py-2.5 rounded transition duration-150 uppercase tracking-wider mt-2">
+                            <span id="btn-text">Extract POI Data</span>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Pipeline utilities -->
+                <div class="polaris-card bg-neutral-50">
+                    <h2 class="text-lg font-display font-bold mb-4 border-b border-neutral-200 pb-2"><i class="fa-solid fa-toolbox mr-2"></i>Pipeline Utilities</h2>
+                    <div class="flex flex-col gap-3 font-mono text-xs">
+                        <button onclick="triggerAction('enrich')" class="w-full text-left px-3 py-2.5 border border-neutral-200 hover:border-black bg-white rounded flex justify-between items-center transition duration-150">
+                            <span><i class="fa-solid fa-share-nodes mr-2 text-indigo-500"></i>Enrich Socials (GSE/DDG)</span>
+                            <span class="text-neutral-400"><i class="fa-solid fa-chevron-right"></i></span>
+                        </button>
+                        <button onclick="triggerAction('validate')" class="w-full text-left px-3 py-2.5 border border-neutral-200 hover:border-black bg-white rounded flex justify-between items-center transition duration-150">
+                            <span><i class="fa-solid fa-envelope-circle-check mr-2 text-amber-500"></i>Validate Emails & Phone</span>
+                            <span class="text-neutral-400"><i class="fa-solid fa-chevron-right"></i></span>
+                        </button>
+                        <button onclick="triggerAction('dedup')" class="w-full text-left px-3 py-2.5 border border-neutral-200 hover:border-black bg-white rounded flex justify-between items-center transition duration-150">
+                            <span><i class="fa-solid fa-object-group mr-2 text-emerald-500"></i>Deduplicate & Merge</span>
+                            <span class="text-neutral-400"><i class="fa-solid fa-chevron-right"></i></span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Export settings -->
+                <div class="polaris-card">
+                    <h2 class="text-lg font-display font-bold mb-4 border-b border-neutral-100 pb-2"><i class="fa-solid fa-download mr-2"></i>Bulk Exports</h2>
+                    <div class="flex flex-col gap-2 font-mono text-xs">
+                        <a href="/api/export?format=csv" class="w-full py-2 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 text-emerald-900 rounded font-semibold text-center block uppercase tracking-wider">
+                            Export Excel CSV
+                        </a>
+                        <a href="/api/export?format=xml" class="w-full py-2 bg-blue-100 hover:bg-blue-200 border border-blue-300 text-blue-900 rounded font-semibold text-center block uppercase tracking-wider">
+                            Export Structured XML
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right panel: Results & Data (Columns 5-12) -->
+            <div class="col-span-12 lg:col-span-8 flex flex-col gap-6">
+                <!-- Search & Filters -->
+                <div class="polaris-card flex flex-col md:flex-row gap-4 items-center justify-between">
+                    <div class="relative w-full md:w-80">
+                        <input type="text" id="search-input" placeholder="Search businesses, address..." 
+                            class="w-full pl-9 pr-4 py-2 border border-neutral-300 rounded text-sm focus:outline-none focus:border-black font-mono">
+                        <span class="absolute left-3 top-2.5 text-neutral-400 text-sm"><i class="fa-solid fa-search"></i></span>
+                    </div>
+                    <div class="flex gap-2 w-full md:w-auto font-mono text-xs">
+                        <select id="run-filter" onchange="loadLeads()" class="w-full md:w-48 py-2 px-3 border border-neutral-300 rounded bg-white focus:outline-none focus:border-black">
+                            <option value="">All Scraper Runs</option>
+                        </select>
+                        <label class="flex items-center gap-2 px-3 py-2 border border-neutral-300 rounded bg-white cursor-pointer select-none">
+                            <input type="checkbox" id="dup-checkbox" onchange="loadLeads()">
+                            <span>Show Duplicates</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Recent Runs Table -->
+                <div class="polaris-card overflow-x-auto">
+                    <h3 class="text-sm uppercase tracking-wider font-mono font-bold mb-3 text-neutral-600"><i class="fa-solid fa-history mr-2"></i>Job Runs History</h3>
+                    <table class="w-full text-left font-mono text-xs">
+                        <thead>
+                            <tr>
+                                <th class="p-3">ID</th>
+                                <th class="p-3">Query</th>
+                                <th class="p-3">Region</th>
+                                <th class="p-3">Status</th>
+                                <th class="p-3">Leads Count</th>
+                                <th class="p-3">Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="runs-tbody">
+                            <tr>
+                                <td colspan="6" class="p-4 text-center text-neutral-400">No runs triggered yet.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Business Leads Table -->
+                <div class="polaris-card overflow-x-auto">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-sm uppercase tracking-wider font-mono font-bold text-neutral-600"><i class="fa-solid fa-address-book mr-2"></i>Extracted Business Leads</h3>
+                        <span class="text-xs font-mono px-2 py-1 bg-neutral-100 rounded text-neutral-600 font-semibold" id="lead-count">0 items</span>
+                    </div>
+                    <table class="w-full text-left text-xs">
+                        <thead>
+                            <tr>
+                                <th class="p-3 font-mono">Name</th>
+                                <th class="p-3 font-mono">Category</th>
+                                <th class="p-3 font-mono">Contacts</th>
+                                <th class="p-3 font-mono">Website</th>
+                                <th class="p-3 font-mono">Socials</th>
+                                <th class="p-3 font-mono">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leads-tbody">
+                            <tr>
+                                <td colspan="6" class="p-8 text-center text-neutral-400 font-mono">No data loaded. Trigger a POI extraction first.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Lead Detail Modal (Stark Swiss design style) -->
+    <div id="detail-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50 transition duration-150">
+        <div class="bg-white border-2 border-black max-w-lg w-full p-6 flex flex-col gap-4 relative">
+            <button onclick="closeModal()" class="absolute right-4 top-4 text-neutral-400 hover:text-black text-xl transition">
+                <i class="fa-solid fa-times"></i>
+            </button>
+            
+            <div class="border-b-2 border-neutral-100 pb-3">
+                <span class="text-xs font-mono uppercase px-2 py-0.5 bg-neutral-100 border border-neutral-200 text-neutral-800 rounded font-semibold" id="modal-source">OSM</span>
+                <h2 class="text-xl font-display font-bold mt-2" id="modal-name">Business Name</h2>
+                <p class="text-xs font-mono text-neutral-500 uppercase mt-0.5" id="modal-category">Cafe</p>
+            </div>
+            
+            <div class="flex flex-col gap-3 font-mono text-xs">
+                <div>
+                    <span class="block text-[10px] uppercase text-neutral-400 font-bold">Address</span>
+                    <span class="text-neutral-900" id="modal-address">-</span>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <span class="block text-[10px] uppercase text-neutral-400 font-bold">Phone Number</span>
+                        <span class="text-neutral-900" id="modal-phone">-</span>
+                    </div>
+                    <div>
+                        <span class="block text-[10px] uppercase text-neutral-400 font-bold">Email Address</span>
+                        <span class="text-neutral-900" id="modal-email">-</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <span class="block text-[10px] uppercase text-neutral-400 font-bold">Cuisine / Brand</span>
+                        <span class="text-neutral-900" id="modal-meta">-</span>
+                    </div>
+                    <div>
+                        <span class="block text-[10px] uppercase text-neutral-400 font-bold">Hours</span>
+                        <span class="text-neutral-900" id="modal-hours">-</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <span class="block text-[10px] uppercase text-neutral-400 font-bold">Latitude</span>
+                        <span class="text-neutral-900" id="modal-lat">-</span>
+                    </div>
+                    <div>
+                        <span class="block text-[10px] uppercase text-neutral-400 font-bold">Longitude</span>
+                        <span class="text-neutral-900" id="modal-lon">-</span>
+                    </div>
+                </div>
+                
+                <div class="border-t border-neutral-100 pt-3 flex flex-col gap-2">
+                    <span class="block text-[10px] uppercase text-neutral-400 font-bold">Social Media Profiles</span>
+                    <div class="flex gap-4">
+                        <span id="modal-instagram-link" class="text-neutral-400">-</span>
+                        <span id="modal-facebook-link" class="text-neutral-400">-</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex gap-2 mt-2 font-mono text-xs">
+                <a id="modal-wa-btn" href="#" target="_blank" class="flex-1 py-2 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 text-emerald-900 font-bold text-center rounded flex justify-center items-center gap-2 transition">
+                    <i class="fa-brands fa-whatsapp text-lg"></i>Chat WhatsApp
+                </a>
+                <a id="modal-web-btn" href="#" target="_blank" class="flex-1 py-2 bg-neutral-100 hover:bg-neutral-200 border border-neutral-300 text-neutral-800 font-bold text-center rounded flex justify-center items-center gap-2 transition">
+                    <i class="fa-solid fa-globe"></i>Visit Website
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script loading -->
+    <script src="dashboard.js"></script>
+</body>
+</html>

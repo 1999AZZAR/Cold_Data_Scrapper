@@ -56,7 +56,7 @@ graph TD
 ### Phase 4: Dashboard Integration
 - [x] **CLI Orchestrator (`orchestrator.py`)**
   - Unified controller script to run pipeline steps with CLI flags and print JSON statuses.
-- [ ] **Web Dashboard (Next.js / Vite + Tailwind CSS)**
+- [x] **Web Dashboard (Flask + HTML/CSS/JS + Tailwind CSS + Font Awesome)**
   - Interactive UI to:
     - Launch and monitor new extraction jobs.
     - View, search, and edit database records.
