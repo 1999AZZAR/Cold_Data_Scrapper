@@ -83,6 +83,11 @@ async function loadRuns() {
                 </td>
                 <td class="p-3 border-b border-neutral-100">${run.results_count} leads</td>
                 <td class="p-3 border-b border-neutral-100 text-neutral-400 font-sans">${run.created_at}</td>
+                <td class="p-3 border-b border-neutral-100 font-mono text-[11px]">
+                    <button onclick="event.stopPropagation(); deleteRun(${run.id})" class="text-rose-600 hover:text-rose-800 font-semibold hover:underline">
+                        <i class="fa-solid fa-trash-can mr-1"></i>Delete
+                    </button>
+                </td>
             `;
             tbody.appendChild(tr);
             
@@ -97,6 +102,31 @@ async function loadRuns() {
         runFilter.value = selectedFilterVal;
     } catch (e) {
         console.error("Failed to load runs history: ", e);
+    }
+}
+
+// Delete a specific run and its leads
+async function deleteRun(runId) {
+    if (!confirm(`Are you sure you want to delete Run #${runId} and all its associated leads data?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/runs/${runId}`, {
+            method: "DELETE"
+        });
+        const res = await response.json();
+        
+        if (res.status === "success") {
+            alert(`Run #${runId} and its data deleted successfully.`);
+            loadStatus();
+            loadRuns();
+            loadLeads();
+        } else {
+            alert(`Error: ${res.error}`);
+        }
+    } catch (err) {
+        alert(`Failed to delete run: ${err}`);
     }
 }
 

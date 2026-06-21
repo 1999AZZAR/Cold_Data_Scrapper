@@ -132,6 +132,19 @@ def get_leads():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route("/api/runs/<int:run_id>", methods=["DELETE"])
+def delete_run(run_id):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM leads WHERE run_id = ?", (run_id,))
+        cursor.execute("DELETE FROM runs WHERE id = ?", (run_id,))
+        conn.commit()
+        conn.close()
+        return jsonify({"status": "success", "message": f"Run {run_id} and its leads deleted"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/api/trigger", methods=["POST"])
 def trigger_run():
     """

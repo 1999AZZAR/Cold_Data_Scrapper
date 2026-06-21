@@ -1,6 +1,8 @@
 # Databases
 memory.db
 cold_data.db
+*.db-wal
+*.db-shm
 
 # Scraped Data Outputs
 *.xml
