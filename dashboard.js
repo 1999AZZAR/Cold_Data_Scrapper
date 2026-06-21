@@ -30,6 +30,50 @@ function debounce(func, delay) {
     };
 }
 
+// Custom Toast notification system
+function showToast(message, type = "info") {
+    const container = document.getElementById("toast-container");
+    if (!container) return;
+    
+    const toast = document.createElement("div");
+    toast.className = `p-3.5 rounded-2xl border backdrop-blur-md shadow-lg shadow-slate-100/30 transition duration-300 transform translate-x-full opacity-0 flex justify-between items-center gap-3 max-w-sm pointer-events-auto`;
+    
+    let bgClass = "bg-white/95 border-slate-200 text-slate-800";
+    let icon = '<i class="fa-solid fa-info-circle text-blue-500 text-sm"></i>';
+    
+    if (type === "success") {
+        bgClass = "bg-emerald-50/95 border-emerald-200/60 text-emerald-900";
+        icon = '<i class="fa-solid fa-circle-check text-emerald-600 text-sm"></i>';
+    } else if (type === "error") {
+        bgClass = "bg-rose-50/95 border-rose-200/60 text-rose-900";
+        icon = '<i class="fa-solid fa-circle-exclamation text-rose-600 text-sm"></i>';
+    }
+    
+    toast.className += ` ${bgClass}`;
+    toast.innerHTML = `
+        <div class="flex items-center gap-2.5">
+            ${icon}
+            <span class="font-sans text-[11px] font-semibold tracking-tight">${message}</span>
+        </div>
+        <button class="text-slate-400 hover:text-slate-900 transition flex items-center justify-center p-1 hover:bg-slate-100 rounded-full" onclick="this.parentElement.remove()">
+            <i class="fa-solid fa-times text-[10px]"></i>
+        </button>
+    `;
+    
+    container.appendChild(toast);
+    
+    // Trigger entrance animation
+    setTimeout(() => {
+        toast.classList.remove("translate-x-full", "opacity-0");
+    }, 10);
+    
+    // Automatically remove after 4 seconds
+    setTimeout(() => {
+        toast.classList.add("translate-x-full", "opacity-0");
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+}
+
 // Fetch system health & counts
 async function loadStatus() {
     try {
@@ -43,7 +87,7 @@ async function loadStatus() {
             document.getElementById("sys-load").textContent = `Load: ${status.cpu_load.toFixed(2)}`;
         }
     } catch (e) {
-        console.error("Failed to load status status: ", e);
+        console.error("Failed to load status:", e);
     }
 }
 
@@ -56,52 +100,49 @@ async function loadRuns() {
         const tbody = document.getElementById("runs-tbody");
         const runFilter = document.getElementById("run-filter");
         
-        // Preserve selected run filter value
         const selectedFilterVal = runFilter.value;
         
         tbody.innerHTML = "";
         runFilter.innerHTML = '<option value="">All Scraper Runs</option>';
         
         if (runs.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-neutral-400">No runs triggered yet.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-neutral-400">No runs triggered yet.</td></tr>';
             return;
         }
         
         runs.forEach(run => {
-            // Update table row
             const tr = document.createElement("tr");
+            tr.className = "hover:bg-slate-50/50 transition-colors duration-150";
             tr.innerHTML = `
-                <td class="p-3 border-b border-neutral-100 font-bold">#${run.id}</td>
-                <td class="p-3 border-b border-neutral-100 font-semibold">${escapeHtml(run.query)}</td>
-                <td class="p-3 border-b border-neutral-100">${escapeHtml(run.region)}</td>
-                <td class="p-3 border-b border-neutral-100">
-                    <span class="px-2 py-0.5 text-[10px] uppercase font-semibold rounded ${
-                        run.status === 'completed' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
-                        run.status === 'running' ? 'bg-blue-100 text-blue-800 border border-blue-200 animate-pulse' :
-                        'bg-rose-100 text-rose-800 border border-rose-200'
+                <td class="p-3 border-b border-slate-100 font-bold text-slate-800">#${run.id}</td>
+                <td class="p-3 border-b border-slate-100 font-semibold text-slate-900">${escapeHtml(run.query)}</td>
+                <td class="p-3 border-b border-slate-100 text-slate-600">${escapeHtml(run.region)}</td>
+                <td class="p-3 border-b border-slate-100">
+                    <span class="px-2.5 py-0.5 text-[9px] tracking-wide uppercase font-bold rounded-full border ${
+                        run.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200/50' :
+                        run.status === 'running' ? 'bg-blue-50 text-blue-700 border-blue-200/50 animate-pulse' :
+                        'bg-rose-50 text-rose-700 border-rose-200/50'
                     }">${run.status}</span>
                 </td>
-                <td class="p-3 border-b border-neutral-100">${run.results_count} leads</td>
-                <td class="p-3 border-b border-neutral-100 text-neutral-400 font-sans">${run.created_at}</td>
-                <td class="p-3 border-b border-neutral-100 font-mono text-[11px]">
-                    <button onclick="event.stopPropagation(); deleteRun(${run.id})" class="text-rose-600 hover:text-rose-800 font-semibold hover:underline">
+                <td class="p-3 border-b border-slate-100 text-slate-700 font-semibold">${run.results_count} leads</td>
+                <td class="p-3 border-b border-slate-100 text-slate-400 font-sans">${run.created_at}</td>
+                <td class="p-3 border-b border-slate-100 font-mono text-[10px]">
+                    <button onclick="event.stopPropagation(); deleteRun(${run.id})" class="text-rose-500 hover:text-rose-700 font-bold hover:underline transition duration-150">
                         <i class="fa-solid fa-trash-can mr-1"></i>Delete
                     </button>
                 </td>
             `;
             tbody.appendChild(tr);
             
-            // Update dropdown filter
             const option = document.createElement("option");
             option.value = run.id;
             option.textContent = `Run #${run.id}: ${run.query} in ${run.region}`;
             runFilter.appendChild(option);
         });
         
-        // Restore selection
         runFilter.value = selectedFilterVal;
     } catch (e) {
-        console.error("Failed to load runs history: ", e);
+        console.error("Failed to load runs history:", e);
     }
 }
 
@@ -118,15 +159,15 @@ async function deleteRun(runId) {
         const res = await response.json();
         
         if (res.status === "success") {
-            alert(`Run #${runId} and its data deleted successfully.`);
+            showToast(`Run #${runId} and its data deleted successfully.`, "success");
             loadStatus();
             loadRuns();
             loadLeads();
         } else {
-            alert(`Error: ${res.error}`);
+            showToast(`Error: ${res.error}`, "error");
         }
     } catch (err) {
-        alert(`Failed to delete run: ${err}`);
+        showToast(`Failed to delete run: ${err}`, "error");
     }
 }
 
@@ -156,40 +197,37 @@ async function loadLeads() {
         
         currentLeads.forEach((lead, index) => {
             const tr = document.createElement("tr");
-            tr.className = "hover:bg-neutral-50 cursor-pointer transition-colors";
+            tr.className = "hover:bg-slate-50/60 cursor-pointer transition-colors duration-150";
             tr.onclick = () => openModal(index);
             
-            // Format phone & email display badges
-            const phoneBadge = lead.phone ? `<span class="inline-flex items-center text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded text-[10px] border border-emerald-100 font-semibold font-mono"><i class="fa-solid fa-phone mr-1"></i>Yes</span>` : `<span class="text-neutral-300 font-mono">-</span>`;
-            const emailBadge = lead.email ? `<span class="inline-flex items-center text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded text-[10px] border border-blue-100 font-semibold font-mono"><i class="fa-solid fa-envelope mr-1"></i>Yes</span>` : `<span class="text-neutral-300 font-mono">-</span>`;
+            const phoneBadge = lead.phone ? `<span class="inline-flex items-center text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full text-[9px] border border-emerald-100/80 font-bold font-mono"><i class="fa-solid fa-phone mr-1 text-[8px]"></i>Phone</span>` : `<span class="text-slate-300 font-mono">-</span>`;
+            const emailBadge = lead.email ? `<span class="inline-flex items-center text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full text-[9px] border border-blue-100/80 font-bold font-mono"><i class="fa-solid fa-envelope mr-1 text-[8px]"></i>Email</span>` : `<span class="text-slate-300 font-mono">-</span>`;
             
-            // Format website display links
-            const webLink = lead.website ? `<a href="${lead.website}" target="_blank" onclick="event.stopPropagation();" class="text-neutral-800 hover:text-black font-mono underline"><i class="fa-solid fa-link mr-1"></i>Website</a>` : '<span class="text-neutral-300">-</span>';
+            const webLink = lead.website ? `<a href="${lead.website}" target="_blank" onclick="event.stopPropagation();" class="text-slate-800 hover:text-indigo-600 font-mono font-semibold transition duration-150 flex items-center gap-1"><i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>Link</a>` : '<span class="text-slate-300">-</span>';
             
-            // Social badges
             let socialBadges = [];
             if (lead.instagram) socialBadges.push(`<i class="fa-brands fa-instagram text-indigo-500 text-sm" title="Instagram present"></i>`);
             if (lead.facebook) socialBadges.push(`<i class="fa-brands fa-facebook text-blue-600 text-sm" title="Facebook present"></i>`);
             if (lead.whatsapp) socialBadges.push(`<i class="fa-brands fa-whatsapp text-emerald-500 text-sm" title="WhatsApp link active"></i>`);
-            const socialString = socialBadges.length > 0 ? `<div class="flex gap-1.5">${socialBadges.join("")}</div>` : '<span class="text-neutral-300">-</span>';
+            const socialString = socialBadges.length > 0 ? `<div class="flex gap-2">${socialBadges.join("")}</div>` : '<span class="text-slate-300">-</span>';
             
             tr.innerHTML = `
-                <td class="p-3 font-semibold text-neutral-900 border-b border-neutral-100">
+                <td class="p-3 font-semibold text-slate-900 border-b border-slate-100">
                     ${escapeHtml(lead.name)}
-                    ${lead.duplicate_of ? `<span class="ml-1 px-1 py-0.5 bg-neutral-100 border text-[9px] font-semibold font-mono text-neutral-500 rounded">Dup of #${lead.duplicate_of}</span>` : ''}
+                    ${lead.duplicate_of ? `<span class="ml-2 px-2 py-0.5 bg-slate-100 text-[9px] font-bold font-mono text-slate-500 rounded-full border border-slate-200/60">Dup of #${lead.duplicate_of}</span>` : ''}
                 </td>
-                <td class="p-3 border-b border-neutral-100 capitalize font-mono text-[11px] text-neutral-500">${escapeHtml(lead.category)}</td>
-                <td class="p-3 border-b border-neutral-100"><div class="flex gap-1">${phoneBadge}${emailBadge}</div></td>
-                <td class="p-3 border-b border-neutral-100">${webLink}</td>
-                <td class="p-3 border-b border-neutral-100">${socialString}</td>
-                <td class="p-3 border-b border-neutral-100 font-mono text-[10px]">
-                    <button class="text-black hover:underline uppercase tracking-wider font-semibold">View Detail</button>
+                <td class="p-3 border-b border-slate-100 capitalize font-mono text-[10px] text-slate-500">${escapeHtml(lead.category)}</td>
+                <td class="p-3 border-b border-slate-100"><div class="flex gap-1.5">${phoneBadge}${emailBadge}</div></td>
+                <td class="p-3 border-b border-slate-100">${webLink}</td>
+                <td class="p-3 border-b border-slate-100">${socialString}</td>
+                <td class="p-3 border-b border-slate-100 font-mono text-[10px]">
+                    <button class="text-slate-900 hover:underline uppercase tracking-wider font-bold transition">View</button>
                 </td>
             `;
             tbody.appendChild(tr);
         });
     } catch (e) {
-        console.error("Failed to load leads: ", e);
+        console.error("Failed to load leads:", e);
     }
 }
 
@@ -216,16 +254,16 @@ async function triggerExtraction(e) {
         const res = await response.json();
         
         if (res.status === "started") {
-            alert(`POI Scraper Run ID #${res.run_id} started in the background! Refresh status to track.`);
+            showToast(`POI Scraper Run ID #${res.run_id} started in the background!`, "success");
             document.getElementById("extract-query").value = "";
             document.getElementById("extract-region").value = "";
             loadRuns();
             loadStatus();
         } else {
-            alert(`Error: ${res.error}`);
+            showToast(`Error: ${res.error}`, "error");
         }
     } catch (err) {
-        alert(`Error triggering scraper: ${err}`);
+        showToast(`Error triggering scraper: ${err}`, "error");
     } finally {
         btn.disabled = false;
         btnText.textContent = "Extract POI Data";
@@ -235,6 +273,7 @@ async function triggerExtraction(e) {
 
 // Trigger separate utilities
 async function triggerAction(actionName) {
+    showToast(`Triggered pipeline stage: ${actionName.toUpperCase()}`, "info");
     try {
         const response = await fetch("/api/action", {
             method: "POST",
@@ -244,17 +283,16 @@ async function triggerAction(actionName) {
         const res = await response.json();
         
         if (res.status === "started") {
-            alert(`Action '${actionName.toUpperCase()}' started in the background!`);
-            // Poll for refreshes
+            showToast(`Action '${actionName.toUpperCase()}' running asynchronously!`, "success");
             setTimeout(() => {
                 loadStatus();
                 loadLeads();
             }, 3000);
         } else {
-            alert(`Error: ${res.error}`);
+            showToast(`Error: ${res.error}`, "error");
         }
     } catch (err) {
-        alert(`Failed to trigger action: ${err}`);
+        showToast(`Failed to trigger action: ${err}`, "error");
     }
 }
 
@@ -273,6 +311,26 @@ function openModal(index) {
     document.getElementById("modal-lat").textContent = lead.latitude || "-";
     document.getElementById("modal-lon").textContent = lead.longitude || "-";
     
+    // Render phone verification status
+    const phoneStatus = document.getElementById("modal-phone-status");
+    if (lead.phone_verified === 1) {
+        phoneStatus.innerHTML = `<span class="px-2 py-0.5 bg-emerald-50 border border-emerald-200/50 text-emerald-700 text-[9px] rounded-full font-bold font-mono">Valid</span>`;
+    } else if (lead.phone_verified === -1) {
+        phoneStatus.innerHTML = `<span class="px-2 py-0.5 bg-rose-50 border border-rose-200/50 text-rose-700 text-[9px] rounded-full font-bold font-mono">Invalid</span>`;
+    } else {
+        phoneStatus.innerHTML = ``;
+    }
+
+    // Render email verification status
+    const emailStatus = document.getElementById("modal-email-status");
+    if (lead.email_verified === 1) {
+        emailStatus.innerHTML = `<span class="px-2 py-0.5 bg-emerald-50 border border-emerald-200/50 text-emerald-700 text-[9px] rounded-full font-bold font-mono">MX Verified</span>`;
+    } else if (lead.email_verified === -1) {
+        emailStatus.innerHTML = `<span class="px-2 py-0.5 bg-rose-50 border border-rose-200/50 text-rose-700 text-[9px] rounded-full font-bold font-mono">Domain Invalid</span>`;
+    } else {
+        emailStatus.innerHTML = ``;
+    }
+
     // Render meta/cuisine info
     let metaString = "-";
     if (lead.cuisine) metaString = `Cuisine: ${lead.cuisine}`;
@@ -282,16 +340,16 @@ function openModal(index) {
     // Social Links
     const instaLink = document.getElementById("modal-instagram-link");
     if (lead.instagram) {
-        instaLink.innerHTML = `<a href="${lead.instagram}" target="_blank" class="text-indigo-600 hover:underline font-mono"><i class="fa-brands fa-instagram mr-1"></i>Instagram Profile</a>`;
+        instaLink.innerHTML = `<a href="${lead.instagram}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/60 text-indigo-700 font-semibold rounded-full transition duration-150"><i class="fa-brands fa-instagram text-sm"></i>Instagram</a>`;
     } else {
-        instaLink.textContent = "Instagram: Not Enriched";
+        instaLink.innerHTML = `<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 border border-slate-200/60 text-slate-400 rounded-full cursor-not-allowed select-none font-semibold"><i class="fa-brands fa-instagram text-sm"></i>Instagram: N/A</span>`;
     }
     
     const fbLink = document.getElementById("modal-facebook-link");
     if (lead.facebook) {
-        fbLink.innerHTML = `<a href="${lead.facebook}" target="_blank" class="text-blue-600 hover:underline font-mono"><i class="fa-brands fa-facebook mr-1"></i>Facebook Page</a>`;
+        fbLink.innerHTML = `<a href="${lead.facebook}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 hover:bg-blue-100 border border-blue-200/60 text-blue-700 font-semibold rounded-full transition duration-150"><i class="fa-brands fa-facebook text-sm"></i>Facebook</a>`;
     } else {
-        fbLink.textContent = "Facebook: Not Enriched";
+        fbLink.innerHTML = `<span class="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 border border-slate-200/60 text-slate-400 rounded-full cursor-not-allowed select-none font-semibold"><i class="fa-brands fa-facebook text-sm"></i>Facebook: N/A</span>`;
     }
     
     // WhatsApp direct action button
