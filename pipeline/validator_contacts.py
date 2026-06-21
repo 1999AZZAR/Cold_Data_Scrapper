@@ -11,7 +11,7 @@ import sqlite3
 import re
 import subprocess
 
-DB_PATH = "cold_data.db"
+DB_PATH = "data/cold_data.db"
 
 def log(msg, level="INFO"):
     print(f"[{level}] {msg}")

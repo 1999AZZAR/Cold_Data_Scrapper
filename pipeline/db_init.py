@@ -8,10 +8,13 @@ import os
 import sqlite3
 import sys
 
-DB_PATH = "cold_data.db"
+DB_PATH = "data/cold_data.db"
 
 def init_db():
     print(f"Initializing database: {DB_PATH}...")
+    dir_name = os.path.dirname(DB_PATH)
+    if dir_name:
+        os.makedirs(dir_name, exist_ok=True)
     conn = sqlite3.connect(DB_PATH, timeout=30)
     
     # Enable WAL (Write-Ahead Logging) mode for concurrent dashboard and script access

@@ -17,7 +17,7 @@ import xml.etree.ElementTree as ET
 import xml.dom.minidom as minidom
 import requests
 
-DB_PATH = "cold_data.db"
+DB_PATH = "data/cold_data.db"
 
 def log(msg, level="INFO"):
     print(f"[{level}] {msg}")

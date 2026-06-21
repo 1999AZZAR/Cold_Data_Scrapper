@@ -1,6 +1,6 @@
 # Databases
+data/
 memory.db
-cold_data.db
 *.db-wal
 *.db-shm
 

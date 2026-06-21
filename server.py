@@ -13,7 +13,7 @@ import json
 from flask import Flask, jsonify, request, send_from_directory, Response
 
 app = Flask(__name__, static_folder="static", static_url_path="")
-DB_PATH = "cold_data.db"
+DB_PATH = "data/cold_data.db"
 
 def get_db_connection():
     conn = sqlite3.connect(DB_PATH, timeout=30)

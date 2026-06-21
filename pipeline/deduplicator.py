@@ -11,7 +11,7 @@ import sqlite3
 import math
 from difflib import SequenceMatcher
 
-DB_PATH = "cold_data.db"
+DB_PATH = "data/cold_data.db"
 DISTANCE_THRESHOLD_METERS = 100.0  # Proximity threshold
 NAME_SIMILARITY_THRESHOLD = 0.7   # String similarity threshold (0.0 - 1.0)
 

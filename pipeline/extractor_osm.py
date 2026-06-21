@@ -29,7 +29,7 @@ HEADERS = {
     'Accept': 'application/json'
 }
 
-DB_PATH = "cold_data.db"
+DB_PATH = "data/cold_data.db"
 
 def log(msg, level="INFO"):
     print(f"[{level}] {msg}")
