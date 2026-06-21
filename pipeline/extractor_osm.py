@@ -225,7 +225,7 @@ def get_db_connection():
     conn.execute("PRAGMA busy_timeout=30000;")
     return conn
 
-def save_to_db(records, query_name, region_name):
+def save_to_db(records, query_name, region_name, run_id=None):
     """
     Saves the records and the run job metadata to the SQLite database.
     """
@@ -237,12 +237,19 @@ def save_to_db(records, query_name, region_name):
     cursor = conn.cursor()
 
     try:
-        # Create run entry
-        cursor.execute(
-            "INSERT INTO runs (query, region, status) VALUES (?, ?, 'running')",
-            (query_name, region_name)
-        )
-        run_id = cursor.lastrowid
+        if run_id is None:
+            # Create run entry
+            cursor.execute(
+                "INSERT INTO runs (query, region, status) VALUES (?, ?, 'running')",
+                (query_name, region_name)
+            )
+            run_id = cursor.lastrowid
+        else:
+            # Update existing run state
+            cursor.execute(
+                "UPDATE runs SET status='running', updated_at=CURRENT_TIMESTAMP WHERE id=?",
+                (run_id,)
+            )
 
         # Insert leads
         inserted_count = 0
@@ -321,6 +328,7 @@ def main():
     parser.add_argument("-r", "--region", required=True, help="Region to query (e.g. 'Jakarta Selatan')")
     parser.add_argument("-o", "--output", help="Output file prefix (default: region_query)")
     parser.add_argument("-l", "--limit", type=int, help="Limit output records count")
+    parser.add_argument("--run-id", type=int, help="Optional database run ID to associate data and update status")
     
     args = parser.parse_args()
     
@@ -353,7 +361,7 @@ def main():
         log(f"Limited output to {args.limit} records.")
         
     # Save to SQLite
-    save_to_db(records, args.query, args.region)
+    save_to_db(records, args.query, args.region, run_id=args.run_id)
         
     # Output file paths
     output_prefix = args.output

@@ -37,6 +37,7 @@ def main():
     p_osm.add_argument("-r", "--region", required=True)
     p_osm.add_argument("-o", "--output")
     p_osm.add_argument("-l", "--limit", type=int)
+    p_osm.add_argument("--run-id", type=int)
     
     # 3. extract-gmaps
     p_gm = subparsers.add_parser("extract-gmaps", help="Run Google Maps extractor")
@@ -45,6 +46,7 @@ def main():
     p_gm.add_argument("-k", "--key")
     p_gm.add_argument("-l", "--limit", type=int)
     p_gm.add_argument("-o", "--output")
+    p_gm.add_argument("--run-id", type=int)
     
     # 4. enrich
     subparsers.add_parser("enrich", help="Run Social Contacts Enricher")
@@ -69,6 +71,7 @@ def main():
     p_all.add_argument("-o", "--output", required=True)
     p_all.add_argument("-l", "--limit", type=int)
     p_all.add_argument("-k", "--key")
+    p_all.add_argument("--run-id", type=int)
     
     args = parser.parse_args()
     
@@ -85,6 +88,7 @@ def main():
         cmd = [sys.executable, "pipeline/extractor_osm.py", "-q", args.query, "-r", args.region]
         if args.output: cmd += ["-o", args.output]
         if args.limit: cmd += ["-l", str(args.limit)]
+        if args.run_id: cmd += ["--run-id", str(args.run_id)]
         out_json = run_command(cmd)
         
     elif args.command == "extract-gmaps":
@@ -92,6 +96,7 @@ def main():
         if args.key: cmd += ["-k", args.key]
         if args.limit: cmd += ["-l", str(args.limit)]
         if args.output: cmd += ["-o", args.output]
+        if args.run_id: cmd += ["--run-id", str(args.run_id)]
         out_json = run_command(cmd)
         
     elif args.command == "enrich":
@@ -117,6 +122,7 @@ def main():
         log(f"Step 1/5: Running OSM Extractor...")
         osm_cmd = [sys.executable, "pipeline/extractor_osm.py", "-q", args.query, "-r", args.region]
         if args.limit: osm_cmd += ["-l", str(args.limit)]
+        if args.run_id: osm_cmd += ["--run-id", str(args.run_id)]
         res_osm = run_command(osm_cmd)
         steps.append({"step": "extract-osm", "result": res_osm})
         

@@ -200,7 +200,7 @@ def get_db_connection():
     conn.execute("PRAGMA busy_timeout=30000;")
     return conn
 
-def save_to_db(records, query_name, region_name):
+def save_to_db(records, query_name, region_name, run_id=None):
     """
     Saves records to SQLite database.
     """
@@ -212,11 +212,17 @@ def save_to_db(records, query_name, region_name):
     cursor = conn.cursor()
 
     try:
-        cursor.execute(
-            "INSERT INTO runs (query, region, status) VALUES (?, ?, 'running')",
-            (query_name, region_name)
-        )
-        run_id = cursor.lastrowid
+        if run_id is None:
+            cursor.execute(
+                "INSERT INTO runs (query, region, status) VALUES (?, ?, 'running')",
+                (query_name, region_name)
+            )
+            run_id = cursor.lastrowid
+        else:
+            cursor.execute(
+                "UPDATE runs SET status='running', updated_at=CURRENT_TIMESTAMP WHERE id=?",
+                (run_id,)
+            )
 
         inserted_count = 0
         for r in records:
@@ -257,6 +263,7 @@ def main():
     parser.add_argument("-k", "--key", help="SerpApi Key (optional)")
     parser.add_argument("-l", "--limit", type=int, help="Limit number of results")
     parser.add_argument("-o", "--output", help="Output file prefix (default: region_query)")
+    parser.add_argument("--run-id", type=int, help="Optional database run ID to associate data and update status")
     
     args = parser.parse_args()
     
@@ -274,7 +281,7 @@ def main():
         sys.exit(1)
         
     # Save to SQLite
-    save_to_db(records, args.query, args.region)
+    save_to_db(records, args.query, args.region, run_id=args.run_id)
     
     # Export files
     output_prefix = args.output or f"{args.region.lower().replace(' ', '_')}_{args.query.lower().replace(' ', '_')}_gmaps"

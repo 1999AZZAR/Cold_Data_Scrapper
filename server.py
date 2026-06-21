@@ -175,7 +175,7 @@ def trigger_run():
         # Note: orchestrator.py will update the same run_id record if we write custom logic,
         # but to keep it simple, we run run-all and let the database entries flow.
         # To avoid creating a double run, we will run the modules individually in sequence!
-        cmd_args = ["run-all", "-q", query, "-r", region, "-o", f"data_{run_id}"]
+        cmd_args = ["run-all", "-q", query, "-r", region, "-o", f"data_{run_id}", "--run-id", str(run_id)]
         if limit:
             cmd_args += ["-l", str(limit)]
             
