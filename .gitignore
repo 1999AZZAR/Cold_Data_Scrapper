@@ -1,0 +1,24 @@
+# Databases
+memory.db
+cold_data.db
+
+# Scraped Data Outputs
+*.xml
+*.csv
+*.xlsx
+
+# Environment & Credentials
+.env
+.env.*
+
+# Python Cache & Artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# System / IDE
+tmp/
+.vscode/
+.idea/
+.DS_Store
