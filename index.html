@@ -26,11 +26,11 @@
         }
     </script>
     <style>
-        /* Custom Polaris x Swiss x Material You design stylesheet */
+        /* Custom Polaris x Swiss design stylesheet */
         body {
-            background-color: #fbfbfc;
+            background-color: #f6f6f7;
             font-family: 'Inter', sans-serif;
-            color: #1e293b;
+            color: #202223;
         }
         
         h1, h2, h3, .font-display {
@@ -44,58 +44,54 @@
             grid-template-columns: repeat(12, minmax(0, 1fr));
         }
 
-        /* Material You x Polaris premium cards */
+        /* Polaris clean functional cards */
         .polaris-card {
-            background: rgba(255, 255, 255, 0.75);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(226, 232, 240, 0.8);
-            border-radius: 16px;
+            background: #ffffff;
+            border: 1px solid #e1e3e5;
+            border-radius: 4px;
             padding: 1.5rem;
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.02), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
         }
         
         .polaris-card:hover {
-            border-color: rgba(148, 163, 184, 0.5);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.04), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
-            transform: translateY(-2px);
+            border-color: #8c9196;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
         }
 
         /* Stark typography emphasis (Swiss) */
         .swiss-header {
             font-weight: 700;
-            letter-spacing: -0.02em;
+            letter-spacing: -0.03em;
         }
 
-        /* Premium Input Fields */
+        /* Stark Input Fields (Polaris style) */
         .premium-input {
             width: 100%;
             font-size: 0.8125rem;
             padding: 0.625rem 0.875rem;
-            background-color: rgba(248, 250, 252, 0.7);
-            border: 1px solid rgba(226, 232, 240, 1);
-            border-radius: 8px;
-            transition: all 0.2s ease-in-out;
+            background-color: #ffffff;
+            border: 1px solid #babfc3;
+            border-radius: 4px;
+            transition: border-color 0.15s ease-in-out;
             font-family: monospace;
-            color: #0f172a;
+            color: #202223;
         }
         .premium-input:focus {
-            background-color: #ffffff;
-            border-color: #0f172a;
+            border-color: #000000;
             outline: none;
-            box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.08);
         }
 
-        /* Premium Buttons */
+        /* Stark Swiss primary buttons */
         .btn-primary {
-            background-color: #0f172a;
+            background-color: #000000;
             color: #ffffff;
             font-family: 'Space Grotesk', sans-serif;
-            font-weight: 600;
+            font-weight: 700;
             font-size: 0.8125rem;
             padding: 0.6875rem 1.25rem;
-            border-radius: 8px;
-            transition: all 0.2s ease-in-out;
+            border-radius: 4px;
+            transition: background-color 0.1s ease-in-out;
             letter-spacing: 0.05em;
             text-transform: uppercase;
             display: flex;
@@ -104,50 +100,50 @@
             gap: 0.5rem;
         }
         .btn-primary:hover {
-            background-color: #1e293b;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+            background-color: #2c2c2c;
         }
         .btn-primary:active {
-            transform: translateY(0);
+            background-color: #000000;
         }
 
-        /* Utility button list items */
+        /* Utility button list items (Polaris list style) */
         .utility-button {
             width: 100%;
             text-align: left;
             padding: 0.6875rem 0.875rem;
-            background: rgba(255, 255, 255, 0.7);
-            border: 1px solid rgba(226, 232, 240, 0.8);
-            border-radius: 10px;
+            background: #ffffff;
+            border: 1px solid #e1e3e5;
+            border-radius: 4px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.15s ease-in-out;
             font-family: monospace;
             font-size: 0.75rem;
+            color: #202223;
         }
         .utility-button:hover {
-            border-color: #0f172a;
-            background: #ffffff;
-            transform: translateX(4px);
+            border-color: #8c9196;
+            background: #f6f6f7;
+            transform: translateX(2px);
         }
 
         /* Table header styling (Polaris) */
         th {
             font-family: monospace;
             font-weight: 600;
-            color: #64748b;
-            border-bottom: 1px solid #e2e8f0;
+            color: #6d7175;
+            background-color: #f6f6f7;
+            border-bottom: 1px solid #e1e3e5;
             text-transform: uppercase;
             font-size: 0.6875rem;
             letter-spacing: 0.05em;
         }
         
         td {
-            border-bottom: 1px solid #f1f5f9;
+            border-bottom: 1px solid #e1e3e5;
             font-size: 0.8125rem;
-            color: #334155;
+            color: #202223;
         }
 
         /* Scrollbar styling */
@@ -172,14 +168,14 @@
             to { opacity: 1; }
         }
         @keyframes scaleUp {
-            from { transform: scale(0.95); opacity: 0; }
+            from { transform: scale(0.97); opacity: 0; }
             to { transform: scale(1); opacity: 1; }
         }
         .modal-overlay-animate {
-            animation: fadeIn 0.2s ease-out forwards;
+            animation: fadeIn 0.15s ease-out forwards;
         }
         .modal-content-animate {
-            animation: scaleUp 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+            animation: scaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
     </style>
 </head>
@@ -365,82 +361,82 @@
         </main>
     </div>
 
-    <!-- Lead Detail Modal (Material You & Glassmorphism design style) -->
-    <div id="detail-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-md hidden flex items-center justify-center p-4 z-50 transition duration-150 modal-overlay-animate">
-        <div class="bg-white/90 backdrop-blur-xl border border-white/20 max-w-xl w-full p-8 rounded-3xl shadow-2xl flex flex-col gap-6 relative modal-content-animate">
-            <button onclick="closeModal()" class="absolute right-6 top-6 text-slate-400 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 h-8 w-8 rounded-full flex items-center justify-center transition duration-150">
-                <i class="fa-solid fa-times"></i>
+    <!-- Lead Detail Modal (Polaris x Swiss design style) -->
+    <div id="detail-modal" class="fixed inset-0 bg-slate-900/50 hidden flex items-center justify-center p-4 z-50 transition duration-150 modal-overlay-animate">
+        <div class="bg-white border border-[#babfc3] max-w-xl w-full p-8 rounded shadow-xl flex flex-col gap-6 relative modal-content-animate">
+            <button onclick="closeModal()" class="absolute right-6 top-6 text-[#6d7175] hover:text-[#202223] bg-[#f6f6f7] hover:bg-[#edeeef] h-8 w-8 rounded flex items-center justify-center transition duration-100">
+                <i class="fa-solid fa-times text-xs"></i>
             </button>
             
-            <div class="border-b border-slate-100 pb-4">
+            <div class="border-b border-[#e1e3e5] pb-4">
                 <div class="flex flex-wrap gap-2 items-center">
-                    <span class="text-[10px] tracking-wider font-mono uppercase px-2.5 py-0.5 bg-slate-100 border border-slate-200 text-slate-700 rounded-full font-bold" id="modal-source">OSM</span>
-                    <span class="text-[10px] tracking-wider font-mono uppercase px-2.5 py-0.5 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-full font-bold animate-pulse" id="modal-category">Cafe</span>
+                    <span class="text-[10px] tracking-wider font-mono uppercase px-2 py-0.5 bg-[#f4f6f8] border border-[#e1e3e5] text-[#202223] rounded font-bold" id="modal-source">OSM</span>
+                    <span class="text-[10px] tracking-wider font-mono uppercase px-2 py-0.5 bg-[#e5f5fc] border border-[#b3e5fc] text-[#006fbb] rounded font-bold" id="modal-category">Cafe</span>
                 </div>
-                <h2 class="text-2xl font-display font-bold mt-3 text-slate-900 leading-snug" id="modal-name">Business Name</h2>
+                <h2 class="text-xl font-display font-bold mt-3 text-[#202223] leading-snug" id="modal-name">Business Name</h2>
             </div>
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
                 <!-- Left Details Column -->
                 <div class="flex flex-col gap-4">
                     <div>
-                        <span class="block text-[10px] uppercase text-slate-400 font-bold tracking-wider font-mono"><i class="fa-solid fa-map-pin mr-1 text-slate-500"></i>Address</span>
-                        <p class="text-slate-800 font-medium mt-1 leading-relaxed font-sans" id="modal-address">-</p>
+                        <span class="block text-[10px] uppercase text-[#6d7175] font-bold tracking-wider font-mono"><i class="fa-solid fa-map-pin mr-1"></i>Address</span>
+                        <p class="text-[#202223] font-medium mt-1 leading-relaxed font-sans" id="modal-address">-</p>
                     </div>
                     
                     <div>
-                        <span class="block text-[10px] uppercase text-slate-400 font-bold tracking-wider font-mono"><i class="fa-solid fa-clock mr-1 text-slate-500"></i>Hours</span>
-                        <p class="text-slate-800 font-mono mt-1" id="modal-hours">-</p>
+                        <span class="block text-[10px] uppercase text-[#6d7175] font-bold tracking-wider font-mono"><i class="fa-solid fa-clock mr-1"></i>Hours</span>
+                        <p class="text-[#202223] font-mono mt-1" id="modal-hours">-</p>
                     </div>
 
                     <div>
-                        <span class="block text-[10px] uppercase text-slate-400 font-bold tracking-wider font-mono"><i class="fa-solid fa-tag mr-1 text-slate-500"></i>Cuisine / Brand</span>
-                        <p class="text-slate-800 font-mono mt-1" id="modal-meta">-</p>
+                        <span class="block text-[10px] uppercase text-[#6d7175] font-bold tracking-wider font-mono"><i class="fa-solid fa-tag mr-1"></i>Cuisine / Brand</span>
+                        <p class="text-[#202223] font-mono mt-1" id="modal-meta">-</p>
                     </div>
                 </div>
 
                 <!-- Right Contact Column -->
                 <div class="flex flex-col gap-4">
                     <div>
-                        <span class="block text-[10px] uppercase text-slate-400 font-bold tracking-wider font-mono"><i class="fa-solid fa-phone mr-1 text-slate-500"></i>Phone Number</span>
+                        <span class="block text-[10px] uppercase text-[#6d7175] font-bold tracking-wider font-mono"><i class="fa-solid fa-phone mr-1"></i>Phone Number</span>
                         <div class="flex flex-wrap items-center gap-2 mt-1">
-                            <span class="text-slate-800 font-mono font-semibold" id="modal-phone">-</span>
+                            <span class="text-[#202223] font-mono font-semibold" id="modal-phone">-</span>
                             <span id="modal-phone-status"></span>
                         </div>
                     </div>
                     
                     <div>
-                        <span class="block text-[10px] uppercase text-slate-400 font-bold tracking-wider font-mono"><i class="fa-solid fa-envelope mr-1 text-slate-500"></i>Email Address</span>
+                        <span class="block text-[10px] uppercase text-[#6d7175] font-bold tracking-wider font-mono"><i class="fa-solid fa-envelope mr-1"></i>Email Address</span>
                         <div class="flex flex-wrap items-center gap-2 mt-1">
-                            <span class="text-slate-800 font-mono font-semibold" id="modal-email">-</span>
+                            <span class="text-[#202223] font-mono font-semibold" id="modal-email">-</span>
                             <span id="modal-email-status"></span>
                         </div>
                     </div>
 
                     <div>
-                        <span class="block text-[10px] uppercase text-slate-400 font-bold tracking-wider font-mono"><i class="fa-solid fa-earth-asia mr-1 text-slate-500"></i>Coordinates</span>
-                        <div class="flex gap-4 mt-1 font-mono text-slate-600">
-                            <div><span class="text-slate-400">Lat:</span> <span id="modal-lat">-</span></div>
-                            <div><span class="text-slate-400">Lon:</span> <span id="modal-lon">-</span></div>
+                        <span class="block text-[10px] uppercase text-[#6d7175] font-bold tracking-wider font-mono"><i class="fa-solid fa-earth-asia mr-1"></i>Coordinates</span>
+                        <div class="flex gap-4 mt-1 font-mono text-[#6d7175]">
+                            <div><span class="text-[#6d7175]/60">Lat:</span> <span id="modal-lat">-</span></div>
+                            <div><span class="text-[#6d7175]/60">Lon:</span> <span id="modal-lon">-</span></div>
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- Social Links Section -->
-            <div class="border-t border-slate-100 pt-4">
-                <span class="block text-[10px] uppercase text-slate-400 font-bold tracking-wider font-mono mb-2"><i class="fa-solid fa-share-nodes mr-1 text-slate-500"></i>Social Media Profiles</span>
+            <div class="border-t border-[#e1e3e5] pt-4">
+                <span class="block text-[10px] uppercase text-[#6d7175] font-bold tracking-wider font-mono mb-2"><i class="fa-solid fa-share-nodes mr-1"></i>Social Media Profiles</span>
                 <div class="flex flex-wrap gap-4">
-                    <span id="modal-instagram-link" class="text-slate-500 font-mono text-xs">-</span>
-                    <span id="modal-facebook-link" class="text-slate-500 font-mono text-xs">-</span>
+                    <span id="modal-instagram-link" class="text-[#202223] font-mono text-xs">-</span>
+                    <span id="modal-facebook-link" class="text-[#202223] font-mono text-xs">-</span>
                 </div>
             </div>
             
             <div class="flex flex-col sm:flex-row gap-3 mt-2 font-mono text-xs">
-                <a id="modal-wa-btn" href="#" target="_blank" class="flex-1 py-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 font-bold text-center rounded-xl flex justify-center items-center gap-2 transition-all hover:-translate-y-0.5 duration-150">
+                <a id="modal-wa-btn" href="#" target="_blank" class="flex-1 py-3 bg-[#108043] hover:bg-[#0f703b] text-white font-bold text-center rounded flex justify-center items-center gap-2 transition duration-100">
                     <i class="fa-brands fa-whatsapp text-base"></i>Chat WhatsApp
                 </a>
-                <a id="modal-web-btn" href="#" target="_blank" class="flex-1 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-center rounded-xl flex justify-center items-center gap-2 transition-all hover:-translate-y-0.5 duration-150">
+                <a id="modal-web-btn" href="#" target="_blank" class="flex-1 py-3 bg-white hover:bg-[#f6f6f7] border border-[#babfc3] text-[#202223] font-bold text-center rounded flex justify-center items-center gap-2 transition duration-100">
                     <i class="fa-solid fa-globe"></i>Visit Website
                 </a>
             </div>

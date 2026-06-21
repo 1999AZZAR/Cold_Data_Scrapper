@@ -36,26 +36,26 @@ function showToast(message, type = "info") {
     if (!container) return;
     
     const toast = document.createElement("div");
-    toast.className = `p-3.5 rounded-2xl border backdrop-blur-md shadow-lg shadow-slate-100/30 transition duration-300 transform translate-x-full opacity-0 flex justify-between items-center gap-3 max-w-sm pointer-events-auto`;
+    toast.className = `p-3.5 rounded border shadow-md transition duration-300 transform translate-x-full opacity-0 flex justify-between items-center gap-3 max-w-sm pointer-events-auto`;
     
-    let bgClass = "bg-white/95 border-slate-200 text-slate-800";
-    let icon = '<i class="fa-solid fa-info-circle text-blue-500 text-sm"></i>';
+    let bgClass = "bg-white border-[#babfc3] text-[#202223]";
+    let icon = '<i class="fa-solid fa-info-circle text-[#006fbb] text-sm"></i>';
     
     if (type === "success") {
-        bgClass = "bg-emerald-50/95 border-emerald-200/60 text-emerald-900";
-        icon = '<i class="fa-solid fa-circle-check text-emerald-600 text-sm"></i>';
+        bgClass = "bg-[#e3f1df] border-[#aee9d1] text-[#108043]";
+        icon = '<i class="fa-solid fa-circle-check text-[#108043] text-sm"></i>';
     } else if (type === "error") {
-        bgClass = "bg-rose-50/95 border-rose-200/60 text-rose-900";
-        icon = '<i class="fa-solid fa-circle-exclamation text-rose-600 text-sm"></i>';
+        bgClass = "bg-[#fedcdb] border-[#ffc4c2] text-[#bf0711]";
+        icon = '<i class="fa-solid fa-circle-exclamation text-[#bf0711] text-sm"></i>';
     }
     
     toast.className += ` ${bgClass}`;
     toast.innerHTML = `
         <div class="flex items-center gap-2.5">
             ${icon}
-            <span class="font-sans text-[11px] font-semibold tracking-tight">${message}</span>
+            <span class="font-sans text-[11px] font-bold tracking-tight">${message}</span>
         </div>
-        <button class="text-slate-400 hover:text-slate-900 transition flex items-center justify-center p-1 hover:bg-slate-100 rounded-full" onclick="this.parentElement.remove()">
+        <button class="text-slate-400 hover:text-slate-900 transition flex items-center justify-center p-1 hover:bg-slate-100 rounded" onclick="this.parentElement.remove()">
             <i class="fa-solid fa-times text-[10px]"></i>
         </button>
     `;
