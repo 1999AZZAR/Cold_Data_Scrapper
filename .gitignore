@@ -10,6 +10,7 @@ cold_data.db
 # Environment & Credentials
 .env
 .env.*
+!.env.example
 
 # Python Cache & Artifacts
 __pycache__/
