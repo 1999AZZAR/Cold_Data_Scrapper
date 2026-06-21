@@ -12,7 +12,7 @@ import threading
 import json
 from flask import Flask, jsonify, request, send_from_directory, Response
 
-app = Flask(__name__, static_folder=".", static_url_path="")
+app = Flask(__name__, static_folder="static", static_url_path="")
 DB_PATH = "cold_data.db"
 
 def get_db_connection():
@@ -40,7 +40,7 @@ def run_pipeline_async(command_args, run_id):
 
 @app.route("/")
 def serve_index():
-    return send_from_directory(".", "index.html")
+    return send_from_directory("static", "index.html")
 
 @app.route("/api/status")
 def get_status():
@@ -220,7 +220,7 @@ def download_export():
     prefix = f"export_run_{run_id}" if run_id else "export_all"
     
     # Run export script
-    cmd = [sys.executable, "export_converter.py", "-o", prefix]
+    cmd = [sys.executable, "pipeline/export_converter.py", "-o", prefix]
     if run_id:
         cmd += ["--run-id", run_id]
         

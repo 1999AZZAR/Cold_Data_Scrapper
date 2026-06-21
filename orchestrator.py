@@ -79,32 +79,32 @@ def main():
     out_json = {}
     
     if args.command == "init":
-        out_json = run_command([sys.executable, "db_init.py"])
+        out_json = run_command([sys.executable, "pipeline/db_init.py"])
         
     elif args.command == "extract-osm":
-        cmd = [sys.executable, "extractor_osm.py", "-q", args.query, "-r", args.region]
+        cmd = [sys.executable, "pipeline/extractor_osm.py", "-q", args.query, "-r", args.region]
         if args.output: cmd += ["-o", args.output]
         if args.limit: cmd += ["-l", str(args.limit)]
         out_json = run_command(cmd)
         
     elif args.command == "extract-gmaps":
-        cmd = [sys.executable, "extractor_gmaps.py", "-q", args.query, "-r", args.region]
+        cmd = [sys.executable, "pipeline/extractor_gmaps.py", "-q", args.query, "-r", args.region]
         if args.key: cmd += ["-k", args.key]
         if args.limit: cmd += ["-l", str(args.limit)]
         if args.output: cmd += ["-o", args.output]
         out_json = run_command(cmd)
         
     elif args.command == "enrich":
-        out_json = run_command([sys.executable, "enricher_socials.py"])
+        out_json = run_command([sys.executable, "pipeline/enricher_socials.py"])
         
     elif args.command == "validate":
-        out_json = run_command([sys.executable, "validator_contacts.py"])
+        out_json = run_command([sys.executable, "pipeline/validator_contacts.py"])
         
     elif args.command == "dedup":
-        out_json = run_command([sys.executable, "deduplicator.py"])
+        out_json = run_command([sys.executable, "pipeline/deduplicator.py"])
         
     elif args.command == "export":
-        cmd = [sys.executable, "export_converter.py", "-o", args.output]
+        cmd = [sys.executable, "pipeline/export_converter.py", "-o", args.output]
         if args.run_id: cmd += ["--run-id", str(args.run_id)]
         if args.query: cmd += ["-q", args.query]
         if args.region: cmd += ["-r", args.region]
@@ -115,7 +115,7 @@ def main():
         
         # 1. Run OSM Extractor
         log(f"Step 1/5: Running OSM Extractor...")
-        osm_cmd = [sys.executable, "extractor_osm.py", "-q", args.query, "-r", args.region]
+        osm_cmd = [sys.executable, "pipeline/extractor_osm.py", "-q", args.query, "-r", args.region]
         if args.limit: osm_cmd += ["-l", str(args.limit)]
         res_osm = run_command(osm_cmd)
         steps.append({"step": "extract-osm", "result": res_osm})
@@ -123,22 +123,22 @@ def main():
         if res_osm["status"] == "success":
             # 2. Run Social Media Enricher
             log(f"Step 2/5: Running Social Enricher...")
-            res_enrich = run_command([sys.executable, "enricher_socials.py"])
+            res_enrich = run_command([sys.executable, "pipeline/enricher_socials.py"])
             steps.append({"step": "enrich", "result": res_enrich})
             
             # 3. Run Contact Validator
             log(f"Step 3/5: Running Contacts Validator...")
-            res_val = run_command([sys.executable, "validator_contacts.py"])
+            res_val = run_command([sys.executable, "pipeline/validator_contacts.py"])
             steps.append({"step": "validate", "result": res_val})
             
             # 4. Run Deduplicator
             log(f"Step 4/5: Running Deduplicator...")
-            res_dedup = run_command([sys.executable, "deduplicator.py"])
+            res_dedup = run_command([sys.executable, "pipeline/deduplicator.py"])
             steps.append({"step": "dedup", "result": res_dedup})
             
             # 5. Run Export Converter
             log(f"Step 5/5: Exporting results...")
-            exp_cmd = [sys.executable, "export_converter.py", "-o", args.output, "-q", args.query, "-r", args.region]
+            exp_cmd = [sys.executable, "pipeline/export_converter.py", "-o", args.output, "-q", args.query, "-r", args.region]
             res_exp = run_command(exp_cmd)
             steps.append({"step": "export", "result": res_exp})
             
