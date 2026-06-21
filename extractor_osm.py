@@ -218,6 +218,13 @@ def parse_elements(elements):
         
     return parsed_records
 
+def get_db_connection():
+    conn = sqlite3.connect(DB_PATH, timeout=30)
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute("PRAGMA synchronous=NORMAL;")
+    conn.execute("PRAGMA busy_timeout=30000;")
+    return conn
+
 def save_to_db(records, query_name, region_name):
     """
     Saves the records and the run job metadata to the SQLite database.
@@ -226,7 +233,7 @@ def save_to_db(records, query_name, region_name):
         log(f"Database {DB_PATH} not found. Initialize it first.", "ERROR")
         return None
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_connection()
     cursor = conn.cursor()
 
     try:

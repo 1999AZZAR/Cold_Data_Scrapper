@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Database Initializer
-Sets up the SQLite database schema for the Cold Data Pipeline.
+Sets up the SQLite database schema and optimizes with WAL mode.
 """
 
 import os
@@ -12,7 +12,13 @@ DB_PATH = "cold_data.db"
 
 def init_db():
     print(f"Initializing database: {DB_PATH}...")
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30)
+    
+    # Enable WAL (Write-Ahead Logging) mode for concurrent dashboard and script access
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute("PRAGMA synchronous=NORMAL;")
+    conn.execute("PRAGMA busy_timeout=30000;")
+    
     cursor = conn.cursor()
 
     # Create runs table
@@ -61,7 +67,7 @@ def init_db():
 
     conn.commit()
     conn.close()
-    print("Database schema initialized successfully.")
+    print("Database schema initialized with WAL mode optimizations.")
 
 if __name__ == "__main__":
     init_db()

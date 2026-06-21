@@ -12,6 +12,9 @@ import re
 import urllib.parse
 import requests
 from bs4 import BeautifulSoup
+from dotenv import load_dotenv
+
+load_dotenv()
 
 DB_PATH = "cold_data.db"
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -19,6 +22,50 @@ HEADERS = {'User-Agent': USER_AGENT}
 
 def log(msg, level="INFO"):
     print(f"[{level}] {msg}")
+
+def get_db_connection():
+    conn = sqlite3.connect(DB_PATH, timeout=30)
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute("PRAGMA synchronous=NORMAL;")
+    conn.execute("PRAGMA busy_timeout=30000;")
+    return conn
+
+def search_social_google_gse(name, region, platform):
+    """
+    Searches Google Custom Search Engine (GSE) for the business name + platform.
+    """
+    gse_api = os.getenv('GSE_API_KEY')
+    gse_id = os.getenv('GSE_ID')
+    if not gse_api or not gse_id:
+        return ""
+        
+    query = f"{name} {region} {platform}"
+    url = 'https://www.googleapis.com/customsearch/v1/'
+    params = {
+        'q': query,
+        'key': gse_api,
+        'cx': gse_id,
+        'safe': 'off',
+        'num': 5,
+        'filter': 0
+    }
+    
+    try:
+        log(f"Searching Google GSE for {platform}: '{name}' in '{region}'...")
+        response = requests.get(url, params=params, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        items = data.get('items', [])
+        
+        for item in items:
+            link = item.get('link', '')
+            if f"{platform}.com/" in link.lower() and "/p/" not in link.lower() and "/tags/" not in link.lower():
+                log(f"Discovered {platform} link via Google GSE: {link}")
+                return link
+    except Exception as e:
+        log(f"Google GSE search failed for {platform}: {e}", "WARNING")
+        
+    return ""
 
 def extract_contacts_from_html(html_content, base_url):
     """
@@ -107,13 +154,17 @@ def enrich_lead(lead_id, name, address, website):
     if website:
         email, instagram, facebook, whatsapp = scrape_website(website)
         
-    # 2. Try search engine queries if socials are still missing
     region = address.split(",")[-1].strip() if address else "Indonesia"
-    
+
     if not instagram:
-        instagram = search_social_duckduckgo(name, region, "instagram")
+        instagram = search_social_google_gse(name, region, "instagram")
+        if not instagram:
+            instagram = search_social_duckduckgo(name, region, "instagram")
+            
     if not facebook:
-        facebook = search_social_duckduckgo(name, region, "facebook")
+        facebook = search_social_google_gse(name, region, "facebook")
+        if not facebook:
+            facebook = search_social_duckduckgo(name, region, "facebook")
         
     return email, instagram, facebook, whatsapp
 
@@ -122,7 +173,7 @@ def main():
         log(f"Database {DB_PATH} not found.", "ERROR")
         sys.exit(1)
         
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_connection()
     cursor = conn.cursor()
     
     # Select leads where email/instagram/facebook is missing and not marked as duplicate

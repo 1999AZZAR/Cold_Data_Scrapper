@@ -80,12 +80,19 @@ def normalize_phone(phone):
     
     return formatted, whatsapp_link
 
+def get_db_connection():
+    conn = sqlite3.connect(DB_PATH, timeout=30)
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute("PRAGMA synchronous=NORMAL;")
+    conn.execute("PRAGMA busy_timeout=30000;")
+    return conn
+
 def main():
     if not os.path.exists(DB_PATH):
         log(f"Database {DB_PATH} not found.", "ERROR")
         sys.exit(1)
         
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_connection()
     cursor = conn.cursor()
     
     # Query unverified emails and phone numbers
