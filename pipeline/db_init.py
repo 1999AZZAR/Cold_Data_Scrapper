@@ -61,12 +61,19 @@ def init_db():
         email_verified INTEGER DEFAULT 0,
         phone_verified INTEGER DEFAULT 0,
         duplicate_of INTEGER,
+        opportunity_score INTEGER DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(source, source_id),
         FOREIGN KEY(run_id) REFERENCES runs(id)
     );
     """)
+
+    # Schema migration safeguard for existing databases
+    try:
+        cursor.execute("ALTER TABLE leads ADD COLUMN opportunity_score INTEGER DEFAULT 0;")
+    except sqlite3.OperationalError:
+        pass
 
     conn.commit()
     conn.close()

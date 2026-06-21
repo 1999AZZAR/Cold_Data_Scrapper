@@ -24,9 +24,9 @@ def get_db_connection():
     conn.execute("PRAGMA busy_timeout=30000;")
     return conn
 
-def fetch_clean_leads(run_id=None, query_filter=None, region_filter=None):
+def fetch_clean_leads(run_id=None, query_filter=None, region_filter=None, search=None, show_duplicates=False):
     """
-    Fetches clean (non-duplicate) leads from SQLite database.
+    Fetches clean (or all) leads from SQLite database matching filters.
     """
     if not os.path.exists(DB_PATH):
         log(f"Database {DB_PATH} not found.", "ERROR")
@@ -40,13 +40,16 @@ def fetch_clean_leads(run_id=None, query_filter=None, region_filter=None):
     SELECT l.id, l.name, l.category, l.latitude, l.longitude, l.address,
            l.phone, l.website, l.email, l.opening_hours, l.cuisine, l.brand,
            l.instagram, l.facebook, l.whatsapp, l.email_verified, l.phone_verified,
-           l.source, l.source_id
+           l.source, l.source_id, l.opportunity_score
     FROM leads l
     LEFT JOIN runs r ON l.run_id = r.id
-    WHERE l.duplicate_of IS NULL
+    WHERE 1=1
     """
     params = []
     
+    if not show_duplicates:
+        query += " AND l.duplicate_of IS NULL"
+        
     if run_id:
         query += " AND l.run_id = ?"
         params.append(run_id)
@@ -56,6 +59,10 @@ def fetch_clean_leads(run_id=None, query_filter=None, region_filter=None):
     if region_filter:
         query += " AND r.region LIKE ?"
         params.append(f"%{region_filter}%")
+    if search:
+        query += " AND (l.name LIKE ? OR l.address LIKE ? OR l.category LIKE ?)"
+        like_val = f"%{search}%"
+        params.extend([like_val, like_val, like_val])
         
     query += " ORDER BY l.name ASC"
     
@@ -97,19 +104,32 @@ def main():
     parser.add_argument("--run-id", type=int, help="Filter by specific scraper run ID")
     parser.add_argument("-q", "--query", help="Filter by run query (e.g. 'cafe')")
     parser.add_argument("-r", "--region", help="Filter by run region (e.g. 'Jakarta Selatan')")
+    parser.add_argument("-s", "--search", help="Filter by general text search query")
+    parser.add_argument("--show-duplicates", action="store_true", help="Include duplicate records in export")
     parser.add_argument("-o", "--output", required=True, help="Output file prefix")
     
     args = parser.parse_args()
     
-    records = fetch_clean_leads(run_id=args.run_id, query_filter=args.query, region_filter=args.region)
+    records = fetch_clean_leads(
+        run_id=args.run_id, 
+        query_filter=args.query, 
+        region_filter=args.region,
+        search=args.search,
+        show_duplicates=args.show_duplicates
+    )
     log(f"Fetched {len(records)} clean leads for exporting.")
     
     if not records:
         log("No matching records found. Exiting.", "WARNING")
         sys.exit(0)
         
-    export_xml(records, f"{args.output}.xml")
-    export_csv(records, f"{args.output}.csv")
+    output_prefix = args.output
+    os.makedirs("exports", exist_ok=True)
+    if not output_prefix.startswith("exports/"):
+        output_prefix = os.path.join("exports", os.path.basename(output_prefix))
+        
+    export_xml(records, f"{output_prefix}.xml")
+    export_csv(records, f"{output_prefix}.csv")
     log("Export completed successfully.", "SUCCESS")
 
 if __name__ == "__main__":

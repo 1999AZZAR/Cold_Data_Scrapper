@@ -127,9 +127,19 @@ async function loadRuns() {
                 <td class="p-3 border-b border-slate-100 text-slate-700 font-semibold">${run.results_count} leads</td>
                 <td class="p-3 border-b border-slate-100 text-slate-400 font-sans">${run.created_at}</td>
                 <td class="p-3 border-b border-slate-100 font-mono text-[10px]">
-                    <button onclick="event.stopPropagation(); deleteRun(${run.id})" class="text-rose-500 hover:text-rose-700 font-bold hover:underline transition duration-150">
-                        <i class="fa-solid fa-trash-can mr-1"></i>Delete
-                    </button>
+                    <div class="flex items-center gap-2">
+                        <a href="/api/export?run_id=${run.id}&format=csv" onclick="event.stopPropagation();" class="text-emerald-600 hover:text-emerald-800 font-bold hover:underline transition duration-150">
+                            <i class="fa-solid fa-file-csv mr-0.5"></i>CSV
+                        </a>
+                        <span class="text-slate-300">|</span>
+                        <a href="/api/export?run_id=${run.id}&format=xml" onclick="event.stopPropagation();" class="text-blue-600 hover:text-blue-800 font-bold hover:underline transition duration-150">
+                            <i class="fa-solid fa-code mr-0.5"></i>XML
+                        </a>
+                        <span class="text-slate-300">|</span>
+                        <button onclick="event.stopPropagation(); deleteRun(${run.id})" class="text-rose-500 hover:text-rose-700 font-bold hover:underline transition duration-150">
+                            <i class="fa-solid fa-trash-can mr-0.5"></i>Delete
+                        </button>
+                    </div>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -148,27 +158,29 @@ async function loadRuns() {
 
 // Delete a specific run and its leads
 async function deleteRun(runId) {
-    if (!confirm(`Are you sure you want to delete Run #${runId} and all its associated leads data?`)) {
-        return;
-    }
-    
-    try {
-        const response = await fetch(`/api/runs/${runId}`, {
-            method: "DELETE"
-        });
-        const res = await response.json();
-        
-        if (res.status === "success") {
-            showToast(`Run #${runId} and its data deleted successfully.`, "success");
-            loadStatus();
-            loadRuns();
-            loadLeads();
-        } else {
-            showToast(`Error: ${res.error}`, "error");
+    showConfirm(
+        "Delete Scraper Run",
+        `Are you sure you want to delete Run #${runId} and all its associated leads data? This cannot be undone.`,
+        async () => {
+            try {
+                const response = await fetch(`/api/runs/${runId}`, {
+                    method: "DELETE"
+                });
+                const res = await response.json();
+                
+                if (res.status === "success") {
+                    showToast(`Run #${runId} and its data deleted successfully.`, "success");
+                    loadStatus();
+                    loadRuns();
+                    loadLeads();
+                } else {
+                    showToast(`Error: ${res.error}`, "error");
+                }
+            } catch (err) {
+                showToast(`Failed to delete run: ${err}`, "error");
+            }
         }
-    } catch (err) {
-        showToast(`Failed to delete run: ${err}`, "error");
-    }
+    );
 }
 
 // Fetch leads list
@@ -191,7 +203,7 @@ async function loadLeads() {
         tbody.innerHTML = "";
         
         if (currentLeads.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-neutral-400 font-mono">No matching records found.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-neutral-400 font-mono">No matching records found.</td></tr>';
             return;
         }
         
@@ -200,8 +212,8 @@ async function loadLeads() {
             tr.className = "hover:bg-slate-50/60 cursor-pointer transition-colors duration-150";
             tr.onclick = () => openModal(index);
             
-            const phoneBadge = lead.phone ? `<span class="inline-flex items-center text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full text-[9px] border border-emerald-100/80 font-bold font-mono"><i class="fa-solid fa-phone mr-1 text-[8px]"></i>Phone</span>` : `<span class="text-slate-300 font-mono">-</span>`;
-            const emailBadge = lead.email ? `<span class="inline-flex items-center text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full text-[9px] border border-blue-100/80 font-bold font-mono"><i class="fa-solid fa-envelope mr-1 text-[8px]"></i>Email</span>` : `<span class="text-slate-300 font-mono">-</span>`;
+            const phoneBadge = lead.phone ? `<span class="inline-flex items-center text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded text-[9px] border border-emerald-100/80 font-bold font-mono"><i class="fa-solid fa-phone mr-1 text-[8px]"></i>Phone</span>` : `<span class="text-slate-300 font-mono">-</span>`;
+            const emailBadge = lead.email ? `<span class="inline-flex items-center text-blue-700 bg-blue-50 px-2 py-0.5 rounded text-[9px] border border-blue-100/80 font-bold font-mono"><i class="fa-solid fa-envelope mr-1 text-[8px]"></i>Email</span>` : `<span class="text-slate-300 font-mono">-</span>`;
             
             const webLink = lead.website ? `<a href="${lead.website}" target="_blank" onclick="event.stopPropagation();" class="text-slate-800 hover:text-indigo-600 font-mono font-semibold transition duration-150 flex items-center gap-1"><i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>Link</a>` : '<span class="text-slate-300">-</span>';
             
@@ -211,15 +223,27 @@ async function loadLeads() {
             if (lead.whatsapp) socialBadges.push(`<i class="fa-brands fa-whatsapp text-emerald-500 text-sm" title="WhatsApp link active"></i>`);
             const socialString = socialBadges.length > 0 ? `<div class="flex gap-2">${socialBadges.join("")}</div>` : '<span class="text-slate-300">-</span>';
             
+            const score = lead.opportunity_score || 0;
+            let scoreClass = "";
+            if (score >= 70) {
+                scoreClass = "bg-[#fedcdb] text-[#bf0711] border-[#ffc4c2]";
+            } else if (score >= 40) {
+                scoreClass = "bg-[#fcf1cd] text-[#9c6f1a] border-[#ffe5b4]";
+            } else {
+                scoreClass = "bg-[#e3f1df] text-[#108043] border-[#aee9d1]";
+            }
+            const scoreBadge = `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] border font-bold font-mono ${scoreClass}">${score}</span>`;
+
             tr.innerHTML = `
                 <td class="p-3 font-semibold text-slate-900 border-b border-slate-100">
                     ${escapeHtml(lead.name)}
-                    ${lead.duplicate_of ? `<span class="ml-2 px-2 py-0.5 bg-slate-100 text-[9px] font-bold font-mono text-slate-500 rounded-full border border-slate-200/60">Dup of #${lead.duplicate_of}</span>` : ''}
+                    ${lead.duplicate_of ? `<span class="ml-2 px-2 py-0.5 bg-slate-100 text-[9px] font-bold font-mono text-slate-500 rounded border border-slate-200/60">Dup of #${lead.duplicate_of}</span>` : ''}
                 </td>
                 <td class="p-3 border-b border-slate-100 capitalize font-mono text-[10px] text-slate-500">${escapeHtml(lead.category)}</td>
                 <td class="p-3 border-b border-slate-100"><div class="flex gap-1.5">${phoneBadge}${emailBadge}</div></td>
                 <td class="p-3 border-b border-slate-100">${webLink}</td>
                 <td class="p-3 border-b border-slate-100">${socialString}</td>
+                <td class="p-3 border-b border-slate-100">${scoreBadge}</td>
                 <td class="p-3 border-b border-slate-100 font-mono text-[10px]">
                     <button class="text-slate-900 hover:underline uppercase tracking-wider font-bold transition">View</button>
                 </td>
@@ -311,6 +335,26 @@ function openModal(index) {
     document.getElementById("modal-lat").textContent = lead.latitude || "-";
     document.getElementById("modal-lon").textContent = lead.longitude || "-";
     
+    // Render opportunity score badge in modal
+    const score = lead.opportunity_score || 0;
+    const modalScoreBadge = document.getElementById("modal-score-badge");
+    if (modalScoreBadge) {
+        let scoreClass = "";
+        let scoreLabel = "";
+        if (score >= 70) {
+            scoreClass = "bg-[#fedcdb] text-[#bf0711] border-[#ffc4c2]";
+            scoreLabel = "High Opportunity";
+        } else if (score >= 40) {
+            scoreClass = "bg-[#fcf1cd] text-[#9c6f1a] border-[#ffe5b4]";
+            scoreLabel = "Medium Opportunity";
+        } else {
+            scoreClass = "bg-[#e3f1df] text-[#108043] border-[#aee9d1]";
+            scoreLabel = "Low Opportunity";
+        }
+        modalScoreBadge.className = `inline-flex mt-1 text-[11px] font-mono font-bold px-2 py-0.5 rounded border ${scoreClass}`;
+        modalScoreBadge.textContent = `${score} pts - ${scoreLabel}`;
+    }
+    
     // Render phone verification status
     const phoneStatus = document.getElementById("modal-phone-status");
     if (lead.phone_verified === 1) {
@@ -395,3 +439,50 @@ function escapeHtml(text) {
     };
     return text.replace(/[&<>'"]/g, m => map[m]);
 }
+
+// Dynamic exporter matching current UI filters (selected run, query text, duplicate state)
+function triggerExport(format) {
+    const runId = document.getElementById("run-filter").value;
+    const search = document.getElementById("search-input").value;
+    const showDuplicates = document.getElementById("dup-checkbox").checked;
+    
+    let url = `/api/export?format=${format}&duplicates=${showDuplicates}`;
+    if (runId) url += `&run_id=${runId}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+    
+    window.location.href = url;
+}
+
+// Custom confirmation modal controller
+let confirmCallback = null;
+
+function showConfirm(title, message, onConfirm, okText = "Delete", okClass = "bg-rose-600 hover:bg-rose-700 text-white") {
+    document.getElementById("confirm-title").textContent = title;
+    document.getElementById("confirm-message").textContent = message;
+    
+    const okBtn = document.getElementById("confirm-ok-btn");
+    okBtn.textContent = okText;
+    okBtn.className = `px-4 py-2 font-bold rounded transition ${okClass}`;
+    
+    confirmCallback = onConfirm;
+    document.getElementById("confirm-modal").classList.remove("hidden");
+}
+
+function closeConfirm() {
+    document.getElementById("confirm-modal").classList.add("hidden");
+    confirmCallback = null;
+}
+
+// Bind confirmation modal events
+document.addEventListener("DOMContentLoaded", () => {
+    const cancelBtn = document.getElementById("confirm-cancel-btn");
+    const okBtn = document.getElementById("confirm-ok-btn");
+    
+    if (cancelBtn) cancelBtn.onclick = closeConfirm;
+    if (okBtn) {
+        okBtn.onclick = () => {
+            if (confirmCallback) confirmCallback();
+            closeConfirm();
+        };
+    }
+});

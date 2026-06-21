@@ -10,6 +10,9 @@ import sys
 import argparse
 import subprocess
 import json
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def log(msg, level="INFO"):
     print(f"[{level}] {msg}", file=sys.stderr)
@@ -119,31 +122,40 @@ def main():
         steps = []
         
         # 1. Run OSM Extractor
-        log(f"Step 1/5: Running OSM Extractor...")
+        log(f"Step 1/6: Running OSM Extractor...")
         osm_cmd = [sys.executable, "pipeline/extractor_osm.py", "-q", args.query, "-r", args.region]
         if args.limit: osm_cmd += ["-l", str(args.limit)]
         if args.run_id: osm_cmd += ["--run-id", str(args.run_id)]
         res_osm = run_command(osm_cmd)
         steps.append({"step": "extract-osm", "result": res_osm})
         
-        if res_osm["status"] == "success":
-            # 2. Run Social Media Enricher
-            log(f"Step 2/5: Running Social Enricher...")
+        # 2. Run Google Maps Extractor
+        log(f"Step 2/6: Running Google Maps Extractor...")
+        gmaps_cmd = [sys.executable, "pipeline/extractor_gmaps.py", "-q", args.query, "-r", args.region]
+        if args.key: gmaps_cmd += ["-k", args.key]
+        if args.limit: gmaps_cmd += ["-l", str(args.limit)]
+        if args.run_id: gmaps_cmd += ["--run-id", str(args.run_id)]
+        res_gmaps = run_command(gmaps_cmd)
+        steps.append({"step": "extract-gmaps", "result": res_gmaps})
+        
+        if res_osm["status"] == "success" or res_gmaps["status"] == "success":
+            # 3. Run Social Media Enricher
+            log(f"Step 3/6: Running Social Enricher...")
             res_enrich = run_command([sys.executable, "pipeline/enricher_socials.py"])
             steps.append({"step": "enrich", "result": res_enrich})
             
-            # 3. Run Contact Validator
-            log(f"Step 3/5: Running Contacts Validator...")
+            # 4. Run Contact Validator
+            log(f"Step 4/6: Running Contacts Validator...")
             res_val = run_command([sys.executable, "pipeline/validator_contacts.py"])
             steps.append({"step": "validate", "result": res_val})
             
-            # 4. Run Deduplicator
-            log(f"Step 4/5: Running Deduplicator...")
+            # 5. Run Deduplicator
+            log(f"Step 5/6: Running Deduplicator...")
             res_dedup = run_command([sys.executable, "pipeline/deduplicator.py"])
             steps.append({"step": "dedup", "result": res_dedup})
             
-            # 5. Run Export Converter
-            log(f"Step 5/5: Exporting results...")
+            # 6. Run Export Converter
+            log(f"Step 6/6: Exporting results...")
             exp_cmd = [sys.executable, "pipeline/export_converter.py", "-o", args.output, "-q", args.query, "-r", args.region]
             res_exp = run_command(exp_cmd)
             steps.append({"step": "export", "result": res_exp})

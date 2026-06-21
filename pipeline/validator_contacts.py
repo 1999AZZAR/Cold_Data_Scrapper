@@ -146,6 +146,26 @@ def main():
         except sqlite3.Error as e:
             log(f"Database error updating lead {lead_id}: {e}", "WARNING")
             
+    # Recalculate opportunity scores for all leads
+    try:
+        cursor.execute("""
+        UPDATE leads 
+        SET opportunity_score = CASE WHEN duplicate_of IS NOT NULL THEN 0 ELSE (
+          (CASE WHEN (website IS NULL OR website = '') THEN 30 ELSE 0 END) +
+          (CASE WHEN (instagram IS NULL OR instagram = '') THEN 20 ELSE 0 END) +
+          (CASE WHEN (facebook IS NULL OR facebook = '') THEN 10 ELSE 0 END) +
+          (CASE WHEN (phone IS NULL OR phone = '') THEN 15 ELSE 0 END) +
+          (CASE WHEN (email IS NULL OR email = '') THEN 15 ELSE 0 END) +
+          (CASE WHEN (address IS NULL OR address = '') THEN 10 ELSE 0 END) +
+          (CASE WHEN email_verified = -1 THEN 10 ELSE 0 END) +
+          (CASE WHEN phone_verified = -1 THEN 10 ELSE 0 END)
+        ) END
+        """)
+        conn.commit()
+        log("Opportunity scores recalculated for all leads.")
+    except sqlite3.Error as e:
+        log(f"Failed to update opportunity scores: {e}", "WARNING")
+        
     conn.close()
     log(f"Validation completed. Validated {validated_count} leads.", "SUCCESS")
 

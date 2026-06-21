@@ -274,14 +274,14 @@
 
                 <!-- Export settings -->
                 <div class="polaris-card">
-                    <h2 class="text-base font-display font-bold mb-4 border-b border-slate-100 pb-2 text-slate-900"><i class="fa-solid fa-download mr-2 text-slate-500"></i>Bulk Exports</h2>
+                    <h2 class="text-base font-display font-bold mb-4 border-b border-slate-100 pb-2 text-slate-900"><i class="fa-solid fa-download mr-2 text-slate-500"></i>Export Filtered View</h2>
                     <div class="flex flex-col gap-3 font-mono text-xs">
-                        <a href="/api/export?format=csv" class="w-full py-2.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 font-bold text-center block rounded-xl transition duration-150">
-                            <i class="fa-solid fa-file-csv mr-1.5 text-emerald-600"></i>EXPORT EXCEL CSV
-                        </a>
-                        <a href="/api/export?format=xml" class="w-full py-2.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-800 font-bold text-center block rounded-xl transition duration-150">
-                            <i class="fa-solid fa-code mr-1.5 text-blue-600"></i>EXPORT STRUCTURED XML
-                        </a>
+                        <button onclick="triggerExport('csv')" class="w-full py-2.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 font-bold text-center block rounded transition duration-150">
+                            <i class="fa-solid fa-file-csv mr-1.5 text-emerald-600"></i>EXPORT AS CSV
+                        </button>
+                        <button onclick="triggerExport('xml')" class="w-full py-2.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-800 font-bold text-center block rounded transition duration-150">
+                            <i class="fa-solid fa-code mr-1.5 text-blue-600"></i>EXPORT AS XML
+                        </button>
                     </div>
                 </div>
             </div>
@@ -347,12 +347,13 @@
                                 <th class="p-3 font-mono">Contacts</th>
                                 <th class="p-3 font-mono">Website</th>
                                 <th class="p-3 font-mono">Socials</th>
+                                <th class="p-3 font-mono">Score</th>
                                 <th class="p-3 font-mono">Action</th>
                             </tr>
                         </thead>
                         <tbody id="leads-tbody">
                             <tr>
-                                <td colspan="6" class="p-8 text-center text-slate-400 font-mono">No data loaded. Trigger a POI extraction first.</td>
+                                <td colspan="7" class="p-8 text-center text-slate-400 font-mono">No data loaded. Trigger a POI extraction first.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -414,6 +415,15 @@
                     </div>
 
                     <div>
+                        <span class="block text-[10px] uppercase text-[#6d7175] font-bold tracking-wider font-mono"><i class="fa-solid fa-star mr-1"></i>Opportunity Score</span>
+                        <div class="mt-1">
+                            <span id="modal-score-badge" class="inline-flex text-[11px] font-mono font-bold px-2 py-0.5 rounded border">
+                                -
+                            </span>
+                        </div>
+                    </div>
+
+                    <div>
                         <span class="block text-[10px] uppercase text-[#6d7175] font-bold tracking-wider font-mono"><i class="fa-solid fa-earth-asia mr-1"></i>Coordinates</span>
                         <div class="flex gap-4 mt-1 font-mono text-[#6d7175]">
                             <div><span class="text-[#6d7175]/60">Lat:</span> <span id="modal-lat">-</span></div>
@@ -439,6 +449,18 @@
                 <a id="modal-web-btn" href="#" target="_blank" class="flex-1 py-3 bg-white hover:bg-[#f6f6f7] border border-[#babfc3] text-[#202223] font-bold text-center rounded flex justify-center items-center gap-2 transition duration-100">
                     <i class="fa-solid fa-globe"></i>Visit Website
                 </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Confirm Modal (Polaris x Swiss style) -->
+    <div id="confirm-modal" class="fixed inset-0 bg-slate-900/50 hidden flex items-center justify-center p-4 z-[60] transition duration-150 modal-overlay-animate">
+        <div class="bg-white border border-[#babfc3] max-w-sm w-full p-6 rounded shadow-xl flex flex-col gap-4 relative modal-content-animate">
+            <h3 class="text-sm font-display font-bold text-[#202223]" id="confirm-title">Confirm Action</h3>
+            <p class="text-xs text-slate-600 leading-relaxed font-sans" id="confirm-message">Are you sure you want to proceed?</p>
+            <div class="flex gap-3 mt-2 font-mono text-xs justify-end">
+                <button id="confirm-cancel-btn" class="px-4 py-2 bg-white hover:bg-[#f6f6f7] border border-[#babfc3] text-[#202223] font-bold rounded transition">Cancel</button>
+                <button id="confirm-ok-btn" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded transition">Delete</button>
             </div>
         </div>
     </div>

@@ -255,16 +255,25 @@ def save_to_db(records, query_name, region_name, run_id=None):
         inserted_count = 0
         for r in records:
             try:
+                # Calculate initial opportunity score
+                score = 0
+                if not r.get("website"): score += 30
+                if not r.get("instagram"): score += 20
+                if not r.get("facebook"): score += 10
+                if not r.get("phone"): score += 15
+                if not r.get("email"): score += 15
+                if not r.get("address"): score += 10
+
                 cursor.execute("""
                 INSERT OR REPLACE INTO leads (
                     run_id, source, source_id, name, category, latitude, longitude,
                     address, phone, website, email, opening_hours, cuisine, brand,
-                    instagram, facebook, whatsapp, updated_at
-                ) VALUES (?, 'osm', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                    instagram, facebook, whatsapp, opportunity_score, updated_at
+                ) VALUES (?, 'osm', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 """, (
                     run_id, r["source_id"], r["name"], r["category"], r["latitude"], r["longitude"],
                     r["address"], r["phone"], r["website"], r["email"], r["opening_hours"],
-                    r["cuisine"], r["brand"], r["instagram"], r["facebook"], r["whatsapp"]
+                    r["cuisine"], r["brand"], r["instagram"], r["facebook"], r["whatsapp"], score
                 ))
                 inserted_count += 1
             except sqlite3.Error as e:
@@ -369,6 +378,11 @@ def main():
         sanitized_region = args.region.lower().replace(" ", "_")
         sanitized_query = args.query.lower().replace("=", "_").replace(" ", "_")
         output_prefix = f"{sanitized_region}_{sanitized_query}"
+        
+    # Ensure saved in exports directory
+    os.makedirs("exports", exist_ok=True)
+    if not output_prefix.startswith("exports/"):
+        output_prefix = os.path.join("exports", os.path.basename(output_prefix))
         
     xml_path = f"{output_prefix}.xml"
     csv_path = f"{output_prefix}.csv"

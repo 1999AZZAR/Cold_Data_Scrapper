@@ -212,22 +212,45 @@ def download_export():
     Helper to trigger XML or CSV exports and download the file.
     """
     run_id = request.args.get("run_id")
+    search = request.args.get("search")
+    query_val = request.args.get("query")
+    region_val = request.args.get("region")
+    show_duplicates = request.args.get("duplicates", "false").lower() == "true"
     format_type = request.args.get("format", "csv").lower()
     
     if format_type not in ("csv", "xml"):
         return "Invalid format", 400
         
-    prefix = f"export_run_{run_id}" if run_id else "export_all"
-    
+    # Generate an appropriate output prefix based on filters
+    if run_id:
+        prefix = f"export_run_{run_id}"
+    elif query_val or region_val:
+        q_part = query_val.lower().replace(" ", "_") if query_val else "all"
+        r_part = region_val.lower().replace(" ", "_") if region_val else "all"
+        prefix = f"export_{q_part}_{r_part}"
+    elif search:
+        s_part = search.lower().replace(" ", "_")
+        prefix = f"export_search_{s_part}"
+    else:
+        prefix = "export_all"
+        
     # Run export script
     cmd = [sys.executable, "pipeline/export_converter.py", "-o", prefix]
     if run_id:
         cmd += ["--run-id", run_id]
+    if query_val:
+        cmd += ["-q", query_val]
+    if region_val:
+        cmd += ["-r", region_val]
+    if search:
+        cmd += ["-s", search]
+    if show_duplicates:
+        cmd += ["--show-duplicates"]
         
     try:
         subprocess.run(cmd, check=True)
         filename = f"{prefix}.{format_type}"
-        return send_from_directory(".", filename, as_attachment=True)
+        return send_from_directory("exports", filename, as_attachment=True)
     except Exception as e:
         return str(e), 500
 
