@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
 """
+Copyright (c) 2026 Azzar Budiyanto / LilyOpenCMS.
+All rights reserved.
+
+Contact: azzar.mr.zs@gmail.com for inquiries.
+"""
+"""
 Orchestrator CLI
 Unified controller interface to sequence pipeline tasks and return JSON status logs.
 Useful for dashboard integration.
@@ -28,7 +34,7 @@ def run_command(args):
         return {"status": "failed", "stdout": e.stdout.strip(), "stderr": e.stderr.strip(), "code": e.returncode}
 
 def main():
-    parser = argparse.ArgumentParser(description="Unified controller orchestrator for Cold Data Pipeline.")
+    parser = argparse.ArgumentParser(description="Unified controller orchestrator for Cold Data Scrapper (CDS).")
     subparsers = parser.add_subparsers(dest="command", help="Orchestration command")
     
     # 1. init
@@ -51,6 +57,7 @@ def main():
     p_gm.add_argument("-o", "--output")
     p_gm.add_argument("--run-id", type=int)
     p_gm.add_argument("--search-id")
+    p_gm.add_argument("--reuse-search", action="store_true", help="Search DB for reusable SerpApi search ID within 31 days")
     
     # 4. enrich
     subparsers.add_parser("enrich", help="Run Social Contacts Enricher")
@@ -77,6 +84,17 @@ def main():
     p_all.add_argument("-k", "--key")
     p_all.add_argument("--run-id", type=int)
     p_all.add_argument("--search-id")
+    p_all.add_argument("--reuse-search", action="store_true", help="Search DB for reusable SerpApi search ID within 31 days")
+    
+    # 9. serpapi-history
+    p_hist = subparsers.add_parser("serpapi-history", help="Manage SerpAPI search cache")
+    hist_sub = p_hist.add_subparsers(dest="hist_action")
+    hist_sub.add_parser("list", help="List all cached searches")
+    hist_list = hist_sub.add_parser("search", help="Filter by query substring")
+    hist_list.add_argument("query")
+    hist_fetch = hist_sub.add_parser("fetch", help="Fetch full JSON for a cache entry")
+    hist_fetch.add_argument("id", type=int)
+    hist_sub.add_parser("purge", help="Delete expired cache entries (31d+ old)")
     
     args = parser.parse_args()
     
@@ -103,6 +121,7 @@ def main():
         if args.output: cmd += ["-o", args.output]
         if args.run_id: cmd += ["--run-id", str(args.run_id)]
         if args.search_id: cmd += ["--search-id", args.search_id]
+        if args.reuse_search: cmd += ["--reuse-search"]
         out_json = run_command(cmd)
         
     elif args.command == "enrich":
@@ -139,6 +158,7 @@ def main():
         if args.limit: gmaps_cmd += ["-l", str(args.limit)]
         if args.run_id: gmaps_cmd += ["--run-id", str(args.run_id)]
         if args.search_id: gmaps_cmd += ["--search-id", args.search_id]
+        if args.reuse_search: gmaps_cmd += ["--reuse-search"]
         res_gmaps = run_command(gmaps_cmd)
         steps.append({"step": "extract-gmaps", "result": res_gmaps})
         
@@ -170,6 +190,38 @@ def main():
             
         out_json = {"status": status, "steps": steps}
         
+    elif args.command == "serpapi-history":
+        from pipeline.extractor_gmaps import get_db_connection, purge_expired_caches
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        if args.hist_action == "list":
+            cur.execute("SELECT id, query, region, engine, result_count, created_at FROM search_archive ORDER BY created_at DESC")
+            out_json = [dict(zip([d[0] for d in cur.description], row)) for row in cur.fetchall()]
+
+        elif args.hist_action == "search":
+            cur.execute("SELECT id, query, region, engine, result_count, created_at FROM search_archive WHERE query LIKE ? ORDER BY created_at DESC", (f"%{args.query}%",))
+            out_json = [dict(zip([d[0] for d in cur.description], row)) for row in cur.fetchall()]
+
+        elif args.hist_action == "fetch":
+            cur.execute("SELECT * FROM search_archive WHERE id = ?", (args.id,))
+            row = cur.fetchone()
+            if row:
+                out_json = dict(zip([d[0] for d in cur.description], row))
+                if out_json.get("json_response"):
+                    out_json["json_response"] = json.loads(out_json["json_response"])
+            else:
+                out_json = {"error": f"Archive ID {args.id} not found"}
+
+        elif args.hist_action == "purge":
+            purged = purge_expired_caches()
+            out_json = {"status": "success", "purged": purged}
+
+        else:
+            out_json = {"error": "Unknown hist_action. Use: list, search, fetch, purge"}
+
+        conn.close()
+
     # Return structured JSON output for dashboard interface
     print(json.dumps(out_json, indent=2))
 

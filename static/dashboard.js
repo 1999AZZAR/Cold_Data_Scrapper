@@ -1,5 +1,11 @@
+/*
+Copyright (c) 2026 Azzar Budiyanto / LilyOpenCMS.
+All rights reserved.
+
+Contact: azzar.mr.zs@gmail.com for inquiries.
+*/
 /**
- * Cold Data Dashboard Frontend Logic
+ * Cold Data Scrapper (CDS) Frontend Logic
  * Connects index.html elements with Flask REST endpoints.
  */
 
@@ -7,6 +13,14 @@
 document.addEventListener("DOMContentLoaded", () => {
     loadStatus();
     loadRuns();
+    
+    // Initialize page size from DOM
+    const sizeSelect = document.getElementById("page-size-select");
+    if (sizeSelect) {
+        const val = sizeSelect.value;
+        pageSize = val === "all" ? 999999 : parseInt(val);
+    }
+    
     loadLeads();
     
     // Poll system status every 10 seconds
@@ -197,15 +211,15 @@ function rerunRun(runId) {
         rerunLimit.value = "";
         
         submitBtn.onclick = async () => {
-            closeRerunModal();
             const limitVal = rerunLimit.value;
             const limit = limitVal ? parseInt(limitVal) : null;
+            const reuseSearch = document.getElementById("rerun-reuse-search").checked;
             
             try {
                 const response = await fetch(`/api/runs/${runId}/rerun`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ limit })
+                    body: JSON.stringify({ limit, reuse_search: reuseSearch })
                 });
                 const res = await response.json();
                 
@@ -239,6 +253,9 @@ function closeRerunModal() {
 
 // Fetch leads list
 let currentLeads = [];
+let currentPage = 1;
+let pageSize = 15;
+
 async function loadLeads() {
     const runId = document.getElementById("run-filter").value;
     const search = document.getElementById("search-input").value;
@@ -251,61 +268,147 @@ async function loadLeads() {
     try {
         const response = await fetch(url);
         currentLeads = await response.json();
+        currentPage = 1; // Reset to first page when filter changes
         
-        const tbody = document.getElementById("leads-tbody");
-        document.getElementById("lead-count").textContent = `${currentLeads.length} items`;
-        tbody.innerHTML = "";
-        
-        if (currentLeads.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-neutral-400 font-mono">No matching records found.</td></tr>';
-            return;
-        }
-        
-        currentLeads.forEach((lead, index) => {
-            const tr = document.createElement("tr");
-            tr.className = "hover:bg-slate-50/60 cursor-pointer transition-colors duration-150";
-            tr.onclick = () => openModal(index);
-            
-            const phoneBadge = lead.phone ? `<span class="inline-flex items-center text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded text-[9px] border border-emerald-100/80 font-bold font-mono"><i class="fa-solid fa-phone mr-1 text-[8px]"></i>Phone</span>` : `<span class="text-slate-300 font-mono">-</span>`;
-            const emailBadge = lead.email ? `<span class="inline-flex items-center text-blue-700 bg-blue-50 px-2 py-0.5 rounded text-[9px] border border-blue-100/80 font-bold font-mono"><i class="fa-solid fa-envelope mr-1 text-[8px]"></i>Email</span>` : `<span class="text-slate-300 font-mono">-</span>`;
-            
-            const webLink = lead.website ? `<a href="${lead.website}" target="_blank" onclick="event.stopPropagation();" class="text-slate-800 hover:text-indigo-600 font-mono font-semibold transition duration-150 flex items-center gap-1"><i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>Link</a>` : '<span class="text-slate-300">-</span>';
-            
-            let socialBadges = [];
-            if (lead.instagram) socialBadges.push(`<i class="fa-brands fa-instagram text-indigo-500 text-sm" title="Instagram present"></i>`);
-            if (lead.facebook) socialBadges.push(`<i class="fa-brands fa-facebook text-blue-600 text-sm" title="Facebook present"></i>`);
-            if (lead.whatsapp) socialBadges.push(`<i class="fa-brands fa-whatsapp text-emerald-500 text-sm" title="WhatsApp link active"></i>`);
-            const socialString = socialBadges.length > 0 ? `<div class="flex gap-2">${socialBadges.join("")}</div>` : '<span class="text-slate-300">-</span>';
-            
-            const score = lead.opportunity_score || 0;
-            let scoreClass = "";
-            if (score >= 70) {
-                scoreClass = "bg-[#fedcdb] text-[#bf0711] border-[#ffc4c2]";
-            } else if (score >= 40) {
-                scoreClass = "bg-[#fcf1cd] text-[#9c6f1a] border-[#ffe5b4]";
-            } else {
-                scoreClass = "bg-[#e3f1df] text-[#108043] border-[#aee9d1]";
-            }
-            const scoreBadge = `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] border font-bold font-mono ${scoreClass}">${score}</span>`;
-
-            tr.innerHTML = `
-                <td class="p-3 font-semibold text-slate-900 border-b border-slate-100">
-                    ${escapeHtml(lead.name)}
-                    ${lead.duplicate_of ? `<span class="ml-2 px-2 py-0.5 bg-slate-100 text-[9px] font-bold font-mono text-slate-500 rounded border border-slate-200/60">Dup of #${lead.duplicate_of}</span>` : ''}
-                </td>
-                <td class="p-3 border-b border-slate-100 capitalize font-mono text-[10px] text-slate-500">${escapeHtml(lead.category)}</td>
-                <td class="p-3 border-b border-slate-100"><div class="flex gap-1.5">${phoneBadge}${emailBadge}</div></td>
-                <td class="p-3 border-b border-slate-100">${webLink}</td>
-                <td class="p-3 border-b border-slate-100">${socialString}</td>
-                <td class="p-3 border-b border-slate-100">${scoreBadge}</td>
-                <td class="p-3 border-b border-slate-100 font-mono text-[10px]">
-                    <button class="text-slate-900 hover:underline uppercase tracking-wider font-bold transition">View</button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
+        renderLeadsTable();
     } catch (e) {
         console.error("Failed to load leads:", e);
+    }
+}
+
+function renderLeadsTable() {
+    const tbody = document.getElementById("leads-tbody");
+    const countSpan = document.getElementById("lead-count");
+    
+    if (!tbody || !countSpan) return;
+    
+    countSpan.textContent = `${currentLeads.length} items`;
+    tbody.innerHTML = "";
+    
+    if (currentLeads.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-neutral-400 font-mono">No matching records found.</td></tr>';
+        updatePaginationControls(0);
+        return;
+    }
+    
+    const totalItems = currentLeads.length;
+    const totalPages = Math.ceil(totalItems / pageSize);
+    if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
+    
+    const startIdx = (currentPage - 1) * pageSize;
+    const endIdx = Math.min(startIdx + pageSize, totalItems);
+    const pageLeads = currentLeads.slice(startIdx, endIdx);
+    
+    pageLeads.forEach((lead, index) => {
+        const actualIndex = startIdx + index;
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-slate-50/60 cursor-pointer transition-colors duration-150";
+        tr.onclick = () => openModal(actualIndex);
+        
+        const phoneBadge = lead.phone ? `<span class="inline-flex items-center text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded text-[9px] border border-emerald-100/80 font-bold font-mono"><i class="fa-solid fa-phone mr-1 text-[8px]"></i>Phone</span>` : `<span class="text-slate-300 font-mono">-</span>`;
+        const emailBadge = lead.email ? `<span class="inline-flex items-center text-blue-700 bg-blue-50 px-2 py-0.5 rounded text-[9px] border border-blue-100/80 font-bold font-mono"><i class="fa-solid fa-envelope mr-1 text-[8px]"></i>Email</span>` : `<span class="text-slate-300 font-mono">-</span>`;
+        const webLink = lead.website ? `<a href="${lead.website}" target="_blank" onclick="event.stopPropagation();" class="text-slate-800 hover:text-indigo-600 font-mono font-semibold transition duration-150 flex items-center gap-1"><i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>Link</a>` : '<span class="text-slate-300">-</span>';
+        
+        let ratingBadge = '-';
+        if (lead.rating != null) {
+            const stars = '★'.repeat(Math.round(lead.rating)) + '☆'.repeat(5 - Math.round(lead.rating));
+            const reviewLabel = lead.review_count != null ? `<span class="text-slate-400 font-normal">(${lead.review_count})</span>` : '';
+            ratingBadge = `<span class="inline-flex items-center gap-1 font-mono text-[10px]"><span class="text-amber-500">${stars}</span> <span class="font-bold">${lead.rating}</span> ${reviewLabel}</span>`;
+        }
+        
+        let socialBadges = [];
+        if (lead.instagram) socialBadges.push(`<i class="fa-brands fa-instagram text-indigo-500 text-sm" title="Instagram present"></i>`);
+        if (lead.facebook) socialBadges.push(`<i class="fa-brands fa-facebook text-blue-600 text-sm" title="Facebook present"></i>`);
+        if (lead.whatsapp) socialBadges.push(`<i class="fa-brands fa-whatsapp text-emerald-500 text-sm" title="WhatsApp link active"></i>`);
+        const socialString = socialBadges.length > 0 ? `<div class="flex gap-2">${socialBadges.join("")}</div>` : '<span class="text-slate-300">-</span>';
+        
+        const score = lead.opportunity_score || 0;
+        let scoreClass = "";
+        if (score >= 70) {
+            scoreClass = "bg-[#fedcdb] text-[#bf0711] border-[#ffc4c2]";
+        } else if (score >= 40) {
+            scoreClass = "bg-[#fcf1cd] text-[#9c6f1a] border-[#ffe5b4]";
+        } else {
+            scoreClass = "bg-[#e3f1df] text-[#108043] border-[#aee9d1]";
+        }
+        const scoreBadge = `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] border font-bold font-mono ${scoreClass}">${score}</span>`;
+
+        const isMerged = lead.source && lead.source.includes(",");
+        const sourceBadge = isMerged
+            ? `<span class="px-1.5 py-0.5 bg-indigo-50 text-[8px] font-bold font-mono text-indigo-600 rounded border border-indigo-100/80 uppercase" title="Merged from OSM & GMaps">Merged</span>`
+            : `<span class="px-1.5 py-0.5 bg-slate-50 text-[8px] font-bold font-mono text-slate-500 rounded border border-slate-200/60 uppercase">${lead.source || 'unknown'}</span>`;
+
+        tr.innerHTML = `
+            <td class="p-3 font-semibold text-slate-900 border-b border-slate-100">
+                <div class="flex flex-wrap items-center gap-1.5">
+                    <span>${escapeHtml(lead.name)}</span>
+                    ${sourceBadge}
+                    ${lead.duplicate_of ? `<span class="px-2 py-0.5 bg-slate-100 text-[9px] font-bold font-mono text-slate-500 rounded border border-slate-200/60">Dup of #${lead.duplicate_of}</span>` : ''}
+                </div>
+            </td>
+            <td class="p-3 border-b border-slate-100 capitalize font-mono text-[10px] text-slate-500">${escapeHtml(lead.category)}</td>
+            <td class="p-3 border-b border-slate-100"><div class="flex gap-1.5">${phoneBadge}${emailBadge}</div></td>
+            <td class="p-3 border-b border-slate-100">${webLink}</td>
+            <td class="p-3 border-b border-slate-100">${ratingBadge}</td>
+            <td class="p-3 border-b border-slate-100">${socialString}</td>
+            <td class="p-3 border-b border-slate-100">${scoreBadge}</td>
+            <td class="p-3 border-b border-slate-100 font-mono text-[10px]">
+                <button class="text-slate-900 hover:underline uppercase tracking-wider font-bold transition">View</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+    
+    updatePaginationControls(totalPages);
+}
+
+function updatePaginationControls(totalPages) {
+    const prevBtn = document.getElementById("prev-page-btn");
+    const nextBtn = document.getElementById("next-page-btn");
+    const pageInfo = document.getElementById("page-info");
+    
+    if (!prevBtn || !nextBtn || !pageInfo) return;
+    
+    if (totalPages <= 1) {
+        prevBtn.disabled = true;
+        nextBtn.disabled = true;
+        pageInfo.textContent = `Page 1 of ${totalPages || 1}`;
+    } else {
+        prevBtn.disabled = (currentPage === 1);
+        nextBtn.disabled = (currentPage === totalPages);
+        pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+    }
+}
+
+function changePageSize() {
+    const sizeSelect = document.getElementById("page-size-select");
+    if (sizeSelect) {
+        const val = sizeSelect.value;
+        pageSize = val === "all" ? 999999 : parseInt(val);
+        currentPage = 1;
+        renderLeadsTable();
+    }
+}
+
+
+
+function prevPage() {
+    if (currentPage > 1) {
+        currentPage--;
+        renderLeadsTable();
+        const tableContainer = document.getElementById("leads-table-container");
+        if (tableContainer) tableContainer.scrollTop = 0;
+    }
+}
+
+function nextPage() {
+    const totalPages = Math.ceil(currentLeads.length / pageSize);
+    if (currentPage < totalPages) {
+        currentPage++;
+        renderLeadsTable();
+        const tableContainer = document.getElementById("leads-table-container");
+        if (tableContainer) tableContainer.scrollTop = 0;
     }
 }
 
@@ -323,11 +426,13 @@ async function triggerExtraction(e) {
     btnText.textContent = "Launching Scraper...";
     btn.classList.add("opacity-50", "cursor-not-allowed");
     
+    const reuseSearch = document.getElementById("extract-reuse-search").checked;
+    
     try {
         const response = await fetch("/api/trigger", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ query, region, limit: limit ? parseInt(limit) : null })
+            body: JSON.stringify({ query, region, limit: limit ? parseInt(limit) : null, reuse_search: reuseSearch })
         });
         const res = await response.json();
         
@@ -389,6 +494,18 @@ function openModal(index) {
     document.getElementById("modal-lat").textContent = lead.latitude || "-";
     document.getElementById("modal-lon").textContent = lead.longitude || "-";
     document.getElementById("modal-price").textContent = lead.price_range || "Not specified";
+    
+    // Rating
+    const modalRating = document.getElementById("modal-rating");
+    const modalReviewCount = document.getElementById("modal-review-count");
+    if (lead.rating != null) {
+        const stars = '★'.repeat(Math.round(lead.rating)) + '☆'.repeat(5 - Math.round(lead.rating));
+        modalRating.textContent = `${stars} ${lead.rating}`;
+        modalReviewCount.textContent = lead.review_count != null ? `(${lead.review_count} reviews)` : '';
+    } else {
+        modalRating.textContent = '-';
+        modalReviewCount.textContent = '';
+    }
     
     // Render map preview using OpenStreetMap embed
     const mapContainer = document.getElementById("modal-map-container");
@@ -552,7 +669,7 @@ function triggerExport() {
         colList.push("phone", "email", "website", "email_verified", "phone_verified");
     }
     if (document.getElementById("export-col-geo").checked) {
-        colList.push("latitude", "longitude", "maps_link");
+        colList.push("latitude", "longitude", "maps_link", "rating", "review_count");
     }
     if (document.getElementById("export-col-socials").checked) {
         colList.push("instagram", "facebook", "whatsapp");

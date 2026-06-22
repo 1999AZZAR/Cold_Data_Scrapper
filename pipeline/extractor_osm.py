@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
 """
+Copyright (c) 2026 Azzar Budiyanto / LilyOpenCMS.
+All rights reserved.
+
+Contact: azzar.mr.zs@gmail.com for inquiries.
+"""
+"""
 OSM / Overpass Extractor
 Gathers local business data from OpenStreetMap, formats it,
 saves it to SQLite database, and exports it to XML & CSV.
@@ -90,26 +96,32 @@ def build_overpass_query(area_info, category, custom_query=None):
     Builds the Overpass QL query string based on category/tags and area info.
     """
     tag_filters = []
-    if custom_query:
-        if "=" in custom_query:
-            key, val = custom_query.split("=", 1)
-            tag_filters = [f'["{key}"="{val}"]']
-        else:
-            tag_filters = [f'["amenity"="{custom_query}"]', f'["shop"="{custom_query}"]']
+    if custom_query and "=" in custom_query:
+        key, val = custom_query.split("=", 1)
+        tag_filters = [f'["{key}"="{val}"]']
     else:
-        cat = category.lower().strip()
-        if cat == "cafe":
+        query_val = (custom_query or category).lower().strip()
+        if query_val == "cafe":
             tag_filters = ['["amenity"="cafe"]', '["shop"="coffee"]']
-        elif cat == "restaurant":
+        elif query_val == "restaurant":
             tag_filters = ['["amenity"="restaurant"]', '["amenity"="fast_food"]']
-        elif cat == "hotel":
+        elif query_val == "hotel":
             tag_filters = ['["tourism"="hotel"]', '["tourism"="guest_house"]', '["tourism"="hostel"]']
-        elif cat == "gym":
+        elif query_val == "gym":
             tag_filters = ['["leisure"="fitness_centre"]', '["leisure"="sports_centre"]']
-        elif cat == "store":
+        elif query_val == "store":
             tag_filters = ['["shop"]']
         else:
-            tag_filters = [f'["amenity"="{cat}"]', f'["shop"="{cat}"]']
+            # Broad search across multiple common OSM tags and handle query variations with/without spaces
+            cats = [query_val]
+            if " " in query_val:
+                cats.append(query_val.replace(" ", ""))
+                cats.append(query_val.replace(" ", "_"))
+            
+            keys = ["amenity", "shop", "tourism", "leisure", "office", "craft", "historic"]
+            for c in cats:
+                for k in keys:
+                    tag_filters.append(f'["{k}"="{c}"]')
 
     query_parts = []
     query_parts.append("[out:json];")
@@ -199,6 +211,16 @@ def parse_elements(elements):
         facebook = tags.get("contact:facebook") or tags.get("facebook", "")
         price_range = tags.get("price_range") or tags.get("price:range") or tags.get("price") or tags.get("fee", "")
         
+        # Rating/reviews: OSM has no standard tag, but some imports include stars/reviews
+        rating = None
+        review_count = None
+        if tags.get("stars"):
+            try: rating = float(tags["stars"])
+            except (ValueError, TypeError): pass
+        if tags.get("reviews"):
+            try: review_count = int(tags["reviews"])
+            except (ValueError, TypeError): pass
+        
         import urllib.parse
         if lat and lon:
             maps_link = f"https://www.google.com/maps/search/?api=1&query={urllib.parse.quote(name)}+{lat},{lon}"
@@ -222,6 +244,8 @@ def parse_elements(elements):
             "facebook": facebook,
             "whatsapp": phone if "whatsapp" in phone.lower() or tags.get("contact:whatsapp") else "",
             "price_range": price_range,
+            "rating": rating,
+            "review_count": review_count,
             "maps_link": maps_link
         })
         
@@ -277,12 +301,12 @@ def save_to_db(records, query_name, region_name, run_id=None):
                 INSERT OR REPLACE INTO leads (
                     run_id, source, source_id, name, category, latitude, longitude,
                     address, phone, website, email, opening_hours, cuisine, brand,
-                    instagram, facebook, whatsapp, opportunity_score, price_range, maps_link, updated_at
-                ) VALUES (?, 'osm', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                    instagram, facebook, whatsapp, opportunity_score, price_range, rating, review_count, maps_link, updated_at
+                ) VALUES (?, 'osm', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 """, (
                     run_id, r["source_id"], r["name"], r["category"], r["latitude"], r["longitude"],
                     r["address"], r["phone"], r["website"], r["email"], r["opening_hours"],
-                    r["cuisine"], r["brand"], r["instagram"], r["facebook"], r["whatsapp"], score, r.get("price_range"), r.get("maps_link")
+                    r["cuisine"], r["brand"], r["instagram"], r["facebook"], r["whatsapp"], score, r.get("price_range"), r.get("rating"), r.get("review_count"), r.get("maps_link")
                 ))
                 inserted_count += 1
             except sqlite3.Error as e:

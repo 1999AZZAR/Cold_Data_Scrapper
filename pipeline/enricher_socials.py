@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
 """
+Copyright (c) 2026 Azzar Budiyanto / LilyOpenCMS.
+All rights reserved.
+
+Contact: azzar.mr.zs@gmail.com for inquiries.
+"""
+"""
 Social Media and Contact Enricher
 Scrapes business website (if available) or queries DuckDuckGo search 
 to find Instagram, Facebook, emails, and WhatsApp contacts for leads in the DB.

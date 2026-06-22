@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
 """
+Copyright (c) 2026 Azzar Budiyanto / LilyOpenCMS.
+All rights reserved.
+
+Contact: azzar.mr.zs@gmail.com for inquiries.
+"""
+"""
 Contact Validator
 Normalizes and validates phone numbers (creates WhatsApp links)
 and checks email domains for valid MX records using native host command.

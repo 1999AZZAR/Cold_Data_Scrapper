@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
 """
+Copyright (c) 2026 Azzar Budiyanto / LilyOpenCMS.
+All rights reserved.
+
+Contact: azzar.mr.zs@gmail.com for inquiries.
+"""
+"""
 Database Initializer
 Sets up the SQLite database schema and optimizes with WAL mode.
 """
@@ -64,6 +70,8 @@ def init_db():
         duplicate_of INTEGER,
         opportunity_score INTEGER DEFAULT 0,
         price_range TEXT,
+        rating REAL,
+        review_count INTEGER,
         maps_link TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -89,9 +97,36 @@ def init_db():
         pass
 
     try:
+        cursor.execute("ALTER TABLE leads ADD COLUMN rating REAL;")
+    except sqlite3.OperationalError:
+        pass
+
+    try:
+        cursor.execute("ALTER TABLE leads ADD COLUMN review_count INTEGER;")
+    except sqlite3.OperationalError:
+        pass
+
+    try:
         cursor.execute("ALTER TABLE runs ADD COLUMN search_id TEXT;")
     except sqlite3.OperationalError:
         pass
+
+    # Search archive cache for SerpAPI results reuse (31-day TTL)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS search_archive (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        search_id TEXT UNIQUE NOT NULL,
+        query TEXT NOT NULL,
+        region TEXT NOT NULL,
+        engine TEXT DEFAULT 'google_maps',
+        page_offset INTEGER DEFAULT 0,
+        result_count INTEGER DEFAULT 0,
+        json_response TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_search_archive_lookup ON search_archive(query, region, engine);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_search_archive_created ON search_archive(created_at);")
 
     conn.commit()
     conn.close()

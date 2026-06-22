@@ -1,10 +1,10 @@
-# Cold Data Pipeline & Dashboard - Development Roadmap
+# Cold Data Scrapper (CDS) - Development Roadmap
 
 This document lists the plan, architecture, and task list for building the modular cold data gathering pipeline, preparing it for dashboard control.
 
 ---
 
-## 🛠️ Architecture Overview
+## Architecture Overview
 
 The system uses a modular, database-centric pipeline built on SQLite. Each stage is an independent Python script that reads from and writes to the SQLite database (`cold_data.db`). This layout allows any dashboard (web/desktop) to trigger, monitor, and query progress asynchronously.
 
@@ -27,7 +27,7 @@ graph TD
 
 ---
 
-## 📅 Roadmap & Tasks
+## Roadmap & Tasks
 
 ### Phase 1: Database & Extraction (Completed)
 - [x] **Database Setup (`db_init.py`)**
@@ -59,8 +59,11 @@ graph TD
 - [x] **Web Dashboard (Flask + HTML/CSS/JS + Tailwind CSS + Font Awesome)**
   - Interactive UI to:
     - Launch and monitor new extraction jobs.
+    - Rerun scraper runs in-place with limit choice modal.
     - View, search, and edit database records.
-    - Export clean datasets to CSV/XML with one click.
+    - View keyless interactive map previews with pinpoint markers.
+    - Navigate table lists using pagination (defaulting to 15 items) and sticky headers.
+    - Use granular exports (JSON/CSV/XML, contacts filtering, custom columns).
 
 ### Phase 5: Production-Ready Cold Research (Pending)
 - [ ] **SerpApi / Playwright Proxy System**
@@ -71,7 +74,7 @@ graph TD
   - Upgrade email verifier to perform interactive SMTP handshake checks to detect if a specific mailbox exists (beyond just domain MX checks).
 - [ ] **Outreach Status & Campaign Tracker**
   - Support outreach lifecycle tracking in DB & UI (`Not Contacted`, `Emailed`, `WhatsApped`, `Interested`, `Replied`, `Unsubscribed`).
-- [ ] **Lead Scoring / Prioritization Engine**
+- [x] **Lead Scoring / Prioritization Engine**
   - Calculate opportunity scores to bubble up highest quality outreach candidates (e.g., high-traffic local businesses with missing websites, incorrect phones, or invalid social links).
 - [ ] **Automated Cron Scheduling**
   - Support cron-based scheduled scraper runs to automatically gather new leads weekly/monthly.

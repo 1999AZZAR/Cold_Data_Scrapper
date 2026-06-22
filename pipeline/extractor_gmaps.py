@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
 """
+Copyright (c) 2026 Azzar Budiyanto / LilyOpenCMS.
+All rights reserved.
+
+Contact: azzar.mr.zs@gmail.com for inquiries.
+"""
+"""
 Google Maps Extraper Script
 Gathers business details from Google Maps.
 Supports:
@@ -22,136 +28,188 @@ DB_PATH = "data/cold_data.db"
 def log(msg, level="INFO"):
     print(f"[{level}] {msg}")
 
+def get_db_connection():
+    conn = sqlite3.connect(DB_PATH, timeout=30)
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute("PRAGMA synchronous=NORMAL;")
+    conn.execute("PRAGMA busy_timeout=30000;")
+    return conn
+
+def get_cached_search(query, region, engine="google_maps"):
+    if not os.path.exists(DB_PATH):
+        return None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT search_id, json_response, created_at
+            FROM search_archive
+            WHERE query = ? AND region = ? AND engine = ?
+              AND datetime(created_at) >= datetime('now', '-31 days')
+            ORDER BY created_at DESC
+            LIMIT 1
+        """, (query, region, engine))
+        row = cursor.fetchone()
+        conn.close()
+        if row:
+            log(f"Cache hit: search_id={row[0]}, cached at {row[2]}")
+            return json.loads(row[1]) if row[1] else None
+    except Exception as e:
+        log(f"Cache lookup failed: {e}", "WARNING")
+    return None
+
+def cache_search(search_id, query, region, engine, page_offset, result_count, json_data):
+    if not search_id or not os.path.exists(DB_PATH):
+        return
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT OR REPLACE INTO search_archive
+            (search_id, query, region, engine, page_offset, result_count, json_response)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (search_id, query, region, engine, page_offset, result_count, json.dumps(json_data)))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        log(f"Cache store failed: {e}", "WARNING")
+
+def purge_expired_caches():
+    if not os.path.exists(DB_PATH):
+        return
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM search_archive WHERE datetime(created_at) < datetime('now', '-31 days')")
+        purged = cursor.rowcount
+        conn.commit()
+        conn.close()
+        if purged > 0:
+            log(f"Purged {purged} expired cache entries.")
+        return purged
+    except Exception as e:
+        log(f"Cache purge failed: {e}", "WARNING")
+        return 0
+
+def parse_serpapi_results(data, limit=None):
+    records = []
+    results = data.get("local_results", [])
+    for item in (results[:limit] if limit else results):
+        gps = item.get("gps_coordinates", {})
+        lat = gps.get("latitude")
+        lon = gps.get("longitude")
+        records.append({
+            "source_id": str(item.get("data_id", "")),
+            "name": item.get("title", "Unnamed Business"),
+            "category": item.get("type", "Business"),
+            "latitude": float(lat) if lat else None,
+            "longitude": float(lon) if lon else None,
+            "address": item.get("address", ""),
+            "phone": item.get("phone", ""),
+            "website": item.get("website", ""),
+            "email": "",
+            "opening_hours": "",
+            "cuisine": "",
+            "brand": "",
+            "instagram": "",
+            "facebook": "",
+            "whatsapp": "",
+            "price_range": item.get("price", ""),
+            "rating": float(item["rating"]) if item.get("rating") else None,
+            "review_count": int(item["reviews"]) if item.get("reviews") else None,
+            "maps_link": item.get("link", "")
+        })
+    return records
+
 def run_serpapi(query, region, api_key, limit, search_id=None):
     """
-    Query Google Maps data using SerpApi wrapper with pagination,
-    or retrieve past results from the search archive if search_id is specified.
+    Query Google Maps data using SerpApi with automatic caching.
+    Checks local cache first, then SerpAPI archive, then fresh search.
     """
+    engine = "google_maps"
+
+    # 1. Direct search_id → fetch from SerpAPI archive
     if search_id:
-        log(f"Retrieving past search from archive using Search ID: {search_id}...")
+        log(f"Fetching from SerpAPI archive: search_id={search_id}...")
         url = f"https://serpapi.com/searches/{search_id}.json"
         params = {"api_key": api_key}
         try:
             response = requests.get(url, params=params, timeout=30)
             response.raise_for_status()
             data = response.json()
-            
             if "error" in data:
-                log(f"SerpApi archive returned error: {data['error']}", "ERROR")
+                log(f"SerpApi archive error: {data['error']}", "ERROR")
                 return [], search_id
-                
-            results = data.get("local_results", [])
-            log(f"SerpApi archive returned {len(results)} business results.")
-            
-            records = []
-            for item in results[:limit] if limit else results:
-                gps = item.get("gps_coordinates", {})
-                lat = gps.get("latitude")
-                lon = gps.get("longitude")
-                address = item.get("address", "")
-                
-                records.append({
-                    "source_id": str(item.get("data_id", "")),
-                    "name": item.get("title", "Unnamed Business"),
-                    "category": item.get("type", "Business"),
-                    "latitude": float(lat) if lat else None,
-                    "longitude": float(lon) if lon else None,
-                    "address": address,
-                    "phone": item.get("phone", ""),
-                    "website": item.get("website", ""),
-                    "email": "", 
-                    "opening_hours": "", 
-                    "cuisine": "",
-                    "brand": "",
-                    "instagram": "",
-                    "facebook": "",
-                    "whatsapp": "",
-                    "price_range": item.get("price", ""),
-                    "maps_link": item.get("link", "")
-                })
+            records = parse_serpapi_results(data, limit)
+            log(f"SerpApi archive returned {len(records)} results.")
             return records, search_id
         except Exception as e:
-            log(f"Failed to retrieve from SerpApi archive: {e}", "ERROR")
+            log(f"Failed to fetch from SerpApi archive: {e}", "ERROR")
             return [], None
 
-    log("Running extraction using SerpApi Google Maps engine...")
+    # 2. Auto-check local cache (zero credits, zero network)
+    cached = get_cached_search(query, region, engine)
+    if cached:
+        log("Reusing locally cached SerpAPI results (0 credits).")
+        records = parse_serpapi_results(cached, limit)
+        sid = cached.get("search_metadata", {}).get("id")
+        return records, sid
+
+    # 3. Fresh search with auto-caching per page
+    log("Running fresh SerpAPI Google Maps search...")
     url = "https://serpapi.com/search.json"
     params = {
-        "engine": "google_maps",
+        "engine": engine,
         "q": f"{query} in {region}",
         "api_key": api_key,
         "hl": "id",
         "gl": "id"
     }
-    
-    effective_limit = limit if limit else 100
+
+    effective_limit = limit if limit else 500
     records = []
     start = 0
     retrieved_search_id = None
-    
+
     while True:
         params["start"] = start
         try:
-            log(f"Requesting SerpApi results at offset {start}...")
+            log(f"Requesting SerpAPI results at offset {start}...")
             response = requests.get(url, params=params, timeout=30)
             response.raise_for_status()
             data = response.json()
-            
-            if not retrieved_search_id:
-                retrieved_search_id = data.get("search_metadata", {}).get("id")
-                if retrieved_search_id:
-                    log(f"SerpApi Search ID recorded: {retrieved_search_id}")
-            
+
+            page_search_id = data.get("search_metadata", {}).get("id")
+            if not retrieved_search_id and page_search_id:
+                retrieved_search_id = page_search_id
+                log(f"SerpApi Search ID: {page_search_id}")
+
             results = data.get("local_results", [])
             if not results:
-                log("No more results returned from SerpApi.")
+                log("No more results.")
                 break
-                
-            log(f"SerpApi returned {len(results)} business results at offset {start}.")
-            
-            for item in results:
-                gps = item.get("gps_coordinates", {})
-                lat = gps.get("latitude")
-                lon = gps.get("longitude")
-                address = item.get("address", "")
-                
-                records.append({
-                    "source_id": str(item.get("data_id", "")),
-                    "name": item.get("title", "Unnamed Business"),
-                    "category": item.get("type", "Business"),
-                    "latitude": float(lat) if lat else None,
-                    "longitude": float(lon) if lon else None,
-                    "address": address,
-                    "phone": item.get("phone", ""),
-                    "website": item.get("website", ""),
-                    "email": "", 
-                    "opening_hours": "", 
-                    "cuisine": "",
-                    "brand": "",
-                    "instagram": "",
-                    "facebook": "",
-                    "whatsapp": "",
-                    "price_range": item.get("price", ""),
-                    "maps_link": item.get("link", "")
-                })
-                
-                if len(records) >= effective_limit:
-                    break
-            
+
+            log(f"SerpApi returned {len(results)} results at offset {start}.")
+
+            # Cache this page's full response
+            cache_search(page_search_id, query, region, engine, start, len(results), data)
+
+            records.extend(parse_serpapi_results(data))
+
             if len(records) >= effective_limit:
-                log(f"Reached collection limit of {effective_limit} records.")
+                log(f"Reached limit of {effective_limit} records.")
                 break
-                
+
             next_link = data.get("serpapi_pagination", {}).get("next")
             if not next_link:
-                log("No next page in pagination metadata.")
+                log("No next page.")
                 break
-                
+
             start += 20
         except Exception as e:
             log(f"SerpApi request failed: {e}", "ERROR")
             break
-            
+
     return records, retrieved_search_id
 
 def run_playwright(query, region, limit):
@@ -198,7 +256,7 @@ def run_playwright(query, region, limit):
         # Scroll sidebar to load results
         log("Scrolling sidebar to extract results...")
         
-        effective_limit = limit if limit else 100
+        effective_limit = limit if limit else 500
         last_count = 0
         scroll_attempts = 0
         
@@ -302,6 +360,8 @@ def run_playwright(query, region, limit):
                     "facebook": "",
                     "whatsapp": "",
                     "price_range": price_range,
+                    "rating": None,
+                    "review_count": None,
                     "maps_link": current_url
                 })
                 count += 1
@@ -311,13 +371,6 @@ def run_playwright(query, region, limit):
                 
         browser.close()
     return records
-
-def get_db_connection():
-    conn = sqlite3.connect(DB_PATH, timeout=30)
-    conn.execute("PRAGMA journal_mode=WAL;")
-    conn.execute("PRAGMA synchronous=NORMAL;")
-    conn.execute("PRAGMA busy_timeout=30000;")
-    return conn
 
 def save_to_db(records, query_name, region_name, run_id=None, search_id=None):
     """
@@ -365,12 +418,12 @@ def save_to_db(records, query_name, region_name, run_id=None, search_id=None):
                 INSERT OR REPLACE INTO leads (
                     run_id, source, source_id, name, category, latitude, longitude,
                     address, phone, website, email, opening_hours, cuisine, brand,
-                    instagram, facebook, whatsapp, opportunity_score, price_range, maps_link, updated_at
-                ) VALUES (?, 'gmaps', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                    instagram, facebook, whatsapp, opportunity_score, price_range, rating, review_count, maps_link, updated_at
+                ) VALUES (?, 'gmaps', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 """, (
                     run_id, r["source_id"], r["name"], r["category"], r["latitude"], r["longitude"],
                     r["address"], r["phone"], r["website"], r["email"], r["opening_hours"],
-                    r["cuisine"], r["brand"], r["instagram"], r["facebook"], r["whatsapp"], score, r.get("price_range"), r.get("maps_link")
+                    r["cuisine"], r["brand"], r["instagram"], r["facebook"], r["whatsapp"], score, r.get("price_range"), r.get("rating"), r.get("review_count"), r.get("maps_link")
                 ))
                 inserted_count += 1
             except sqlite3.Error as e:
@@ -405,17 +458,21 @@ def main():
     parser.add_argument("-o", "--output", help="Output file prefix (default: region_query)")
     parser.add_argument("--run-id", type=int, help="Optional database run ID to associate data and update status")
     parser.add_argument("--search-id", help="Optional SerpApi search ID to fetch from search archive")
+    parser.add_argument("--reuse-search", action="store_true", help="(Deprecated) Auto-reuse is now always on")
     
     args = parser.parse_args()
+    
+    # Auto-purge expired cache entries on startup
+    purge_expired_caches()
     
     api_key = args.key or os.environ.get("SERPAPI_KEY")
     records = []
     retrieved_search_id = None
     
+    # Auto-reuse: always check cache unless explicit search_id provided
     if api_key:
         records, retrieved_search_id = run_serpapi(args.query, args.region, api_key, args.limit, search_id=args.search_id)
     else:
-        # Fallback to local browser Playwright
         records = run_playwright(args.query, args.region, args.limit)
         
     if not records:

@@ -1,10 +1,10 @@
-# Cold Data Pipeline & Orchestrator
+# Cold Data Scrapper (CDS)
 
-A modular, database-centric pipeline to extract, validate, enrich, deduplicate, and export local business lead data. Outputs Excel-compatible XML and CSV.
+A modular, database-centric pipeline to extract, validate, enrich, deduplicate, and export local business lead data. Outputs Excel-compatible XML, CSV, and JSON.
 
 ---
 
-## 🛠️ Architecture
+## Architecture
 
 The pipeline consists of independent modular Python scripts coordinating through a shared SQLite database (`cold_data.db`). A unified Orchestrator CLI wraps the modules, outputting JSON status logs for easy dashboard integration.
 
@@ -28,7 +28,7 @@ graph TD
 
 ---
 
-## 📂 Core Modules
+## Core Modules
 
 1. **Database Setup (`db_init.py`)**
    - Initializes database schema (`runs` and `leads` tables).
@@ -49,7 +49,7 @@ graph TD
 
 ---
 
-## 🚀 Setup & Execution
+## Setup & Execution
 
 ### 1. Initialize Database
 ```bash
@@ -90,7 +90,7 @@ python3 server.py
 ```
 Open `http://localhost:8080` in your web browser.
 
-## 📊 Output Formats
+## Output Formats
 
 - **CSV**: Encoded with UTF-8 BOM, allowing immediate double-click import into Excel with correct character displays.
 - **XML**: Formatted semantic data tree ready for spreadsheet import schemas.

@@ -1,9 +1,15 @@
+<!--
+Copyright (c) 2026 Azzar Budiyanto / LilyOpenCMS.
+All rights reserved.
+
+Contact: azzar.mr.zs@gmail.com for inquiries.
+-->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cold Data Control - Polaris x Swiss Dashboard</title>
+    <title>Cold Data Scrapper (CDS)</title>
     <!-- Tailwind CSS (Default styling framework) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome (Default icon framework) -->
@@ -138,6 +144,9 @@
             text-transform: uppercase;
             font-size: 0.6875rem;
             letter-spacing: 0.05em;
+            position: sticky;
+            top: 0;
+            z-index: 10;
         }
         
         td {
@@ -181,10 +190,10 @@
 </head>
 <body class="bg-gradient-to-br from-slate-50 via-zinc-50 to-slate-100 min-h-screen p-6 text-slate-800 selection:bg-slate-900 selection:text-white">
     <div class="max-w-7xl mx-auto">
-        <!-- Dashboard Topbar (Elegant Polaris x Swiss layout) -->
+        <!-- Dashboard Topbar -->
         <header class="flex flex-col md:flex-row justify-between items-start md:items-center pb-6 mb-8 border-b border-slate-200/80">
             <div>
-                <h1 class="text-3xl font-display font-bold tracking-tight text-slate-900">Cold Data Control</h1>
+                <h1 class="text-3xl font-display font-bold tracking-tight text-slate-900">Cold Data Scrapper (CDS)</h1>
                 <p class="text-xs text-slate-500 mt-1 font-mono">Modular Business Leads Extractor &amp; Enricher Pipeline</p>
             </div>
             
@@ -243,9 +252,18 @@
                             <select id="extract-limit" class="premium-input bg-white">
                                 <option value="">Unlimited</option>
                                 <option value="10">Top 10</option>
+                                <option value="20">Top 20</option>
                                 <option value="50">Top 50</option>
                                 <option value="100">Top 100</option>
+                                <option value="200">Top 200</option>
+                                <option value="500">Top 500</option>
                             </select>
+                        </div>
+                        <div class="flex items-center gap-2 mt-1">
+                            <label class="flex items-center gap-2 cursor-pointer font-sans text-xs text-slate-700 select-none">
+                                <input type="checkbox" id="extract-reuse-search" checked class="rounded border-[#babfc3] text-slate-900 focus:ring-slate-900">
+                                <span>Reuse past search if available (Free)</span>
+                            </label>
                         </div>
                         <button type="submit" id="extract-btn" class="btn-primary mt-2">
                             <span id="btn-text">Extract POI Data</span>
@@ -388,32 +406,63 @@
                     </table>
                 </div>
 
+                <!-- SerpAPI Search History Cache -->
                 <!-- Business Leads Table -->
-                <div class="polaris-card overflow-x-auto">
+                <div class="polaris-card">
                     <div class="flex justify-between items-center mb-3">
                         <h3 class="text-xs uppercase tracking-wider font-mono font-bold text-slate-500 flex items-center gap-2">
                             <i class="fa-solid fa-address-book text-slate-400"></i>Extracted Business Leads
                         </h3>
                         <span class="text-[10px] font-mono px-2 py-0.5 bg-slate-100 border border-slate-200 rounded-full text-slate-600 font-bold" id="lead-count">0 items</span>
                     </div>
-                    <table class="w-full text-left text-xs">
-                        <thead>
-                            <tr>
-                                <th class="p-3 font-mono">Name</th>
-                                <th class="p-3 font-mono">Category</th>
-                                <th class="p-3 font-mono">Contacts</th>
-                                <th class="p-3 font-mono">Website</th>
-                                <th class="p-3 font-mono">Socials</th>
-                                <th class="p-3 font-mono">Score</th>
-                                <th class="p-3 font-mono">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="leads-tbody">
-                            <tr>
-                                <td colspan="7" class="p-8 text-center text-slate-400 font-mono">No data loaded. Trigger a POI extraction first.</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <div id="leads-table-container" class="overflow-x-auto overflow-y-auto max-h-[1100px] border border-slate-100 rounded">
+                        <table class="w-full text-left text-xs">
+                            <thead>
+                                <tr class="bg-slate-50 border-b border-slate-150">
+                                    <th class="p-3 font-mono">Name</th>
+                                    <th class="p-3 font-mono">Category</th>
+                                    <th class="p-3 font-mono">Contacts</th>
+                                    <th class="p-3 font-mono">Website</th>
+                                    <th class="p-3 font-mono">Rating</th>
+                                    <th class="p-3 font-mono">Socials</th>
+                                    <th class="p-3 font-mono">Score</th>
+                                    <th class="p-3 font-mono">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leads-tbody">
+                                <tr>
+                                    <td colspan="8" class="p-8 text-center text-slate-400 font-mono">No data loaded. Trigger a POI extraction first.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination Controls -->
+                    <div class="flex flex-col sm:flex-row justify-between items-center mt-4 pt-3 border-t border-slate-100 gap-3 text-xs font-mono">
+                        <div class="flex flex-wrap items-center gap-4 text-slate-500">
+                            <div class="flex items-center gap-2">
+                                <span>Show</span>
+                                <select id="page-size-select" onchange="changePageSize()" class="bg-white border border-[#babfc3] text-[#202223] rounded py-1 px-2 cursor-pointer focus:outline-none">
+                                    <option value="10">10</option>
+                                    <option value="15" selected>15</option>
+                                    <option value="25">25</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                    <option value="all">All</option>
+                                </select>
+                                <span>entries</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <button id="prev-page-btn" onclick="prevPage()" class="px-3 py-1 bg-white hover:bg-[#f6f6f7] border border-[#babfc3] text-[#202223] font-bold rounded disabled:opacity-50 disabled:cursor-not-allowed transition">
+                                Prev
+                            </button>
+                            <span id="page-info" class="text-slate-600">Page 1 of 1</span>
+                            <button id="next-page-btn" onclick="nextPage()" class="px-3 py-1 bg-white hover:bg-[#f6f6f7] border border-[#babfc3] text-[#202223] font-bold rounded disabled:opacity-50 disabled:cursor-not-allowed transition">
+                                Next
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>
@@ -486,6 +535,14 @@
                     </div>
 
                     <div>
+                        <span class="block text-[10px] uppercase text-[#6d7175] font-bold tracking-wider font-mono"><i class="fa-solid fa-star-half-stroke mr-1"></i>Rating</span>
+                        <div class="mt-1 font-mono text-[11px]">
+                            <span id="modal-rating" class="text-amber-500 font-bold">-</span>
+                            <span id="modal-review-count" class="text-slate-400 font-normal"></span>
+                        </div>
+                    </div>
+
+                    <div>
                         <span class="block text-[10px] uppercase text-[#6d7175] font-bold tracking-wider font-mono"><i class="fa-solid fa-earth-asia mr-1"></i>Coordinates</span>
                         <div class="flex gap-4 mt-1 font-mono text-[#6d7175]">
                             <div><span class="text-[#6d7175]/60">Lat:</span> <span id="modal-lat">-</span></div>
@@ -554,7 +611,14 @@
                     <option value="50">50 records</option>
                     <option value="100">100 records</option>
                     <option value="200">200 records</option>
+                    <option value="500">500 records</option>
                 </select>
+            </div>
+            <div class="flex items-center gap-2 mt-1">
+                <label class="flex items-center gap-2 cursor-pointer font-sans text-xs text-slate-700 select-none">
+                    <input type="checkbox" id="rerun-reuse-search" checked class="rounded border-[#babfc3] text-slate-900 focus:ring-slate-900">
+                    <span>Reuse past search if available (Free)</span>
+                </label>
             </div>
             <div class="flex gap-3 mt-2 font-mono text-xs justify-end">
                 <button onclick="closeRerunModal()" class="px-4 py-2 bg-white hover:bg-[#f6f6f7] border border-[#babfc3] text-[#202223] font-bold rounded transition">Cancel</button>

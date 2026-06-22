@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
 """
+Copyright (c) 2026 Azzar Budiyanto / LilyOpenCMS.
+All rights reserved.
+
+Contact: azzar.mr.zs@gmail.com for inquiries.
+"""
+"""
 Dashboard Backend Server
 Flask API server to trigger scrapers, query database records, and serve dashboard UI.
 """
@@ -152,6 +158,7 @@ def rerun_run(run_id):
     """
     data = request.json or {}
     limit = data.get("limit")
+    reuse_search = data.get("reuse_search", True)
     
     try:
         conn = get_db_connection()
@@ -178,8 +185,11 @@ def rerun_run(run_id):
         conn.close()
         
         cmd_args = ["run-all", "-q", query, "-r", region, "-o", f"data_{run_id}", "--run-id", str(run_id)]
-        if search_id:
-            cmd_args += ["--search-id", search_id]
+        if reuse_search:
+            if search_id:
+                cmd_args += ["--search-id", search_id]
+            else:
+                cmd_args += ["--reuse-search"]
         if limit:
             cmd_args += ["-l", str(limit)]
             
@@ -199,6 +209,7 @@ def trigger_run():
     query = data.get("query")
     region = data.get("region")
     limit = data.get("limit")
+    reuse_search = data.get("reuse_search", False)
     
     if not query or not region:
         return jsonify({"error": "Missing query or region"}), 400
@@ -221,6 +232,8 @@ def trigger_run():
         # but to keep it simple, we run run-all and let the database entries flow.
         # To avoid creating a double run, we will run the modules individually in sequence!
         cmd_args = ["run-all", "-q", query, "-r", region, "-o", f"data_{run_id}", "--run-id", str(run_id)]
+        if reuse_search:
+            cmd_args += ["--reuse-search"]
         if limit:
             cmd_args += ["-l", str(limit)]
             
@@ -316,7 +329,70 @@ def download_export():
     except Exception as e:
         return str(e), 500
 
+@app.route("/api/serpapi-history", methods=["GET"])
+def get_serpapi_history():
+    """
+    List cached SerpAPI search results with summary info.
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        q = request.args.get("q")
+        if q:
+            like_val = f"%{q}%"
+            cursor.execute("""
+                SELECT id, search_id, query, region, engine, page_offset, result_count, created_at
+                FROM search_archive
+                WHERE query LIKE ? OR region LIKE ?
+                ORDER BY created_at DESC
+            """, (like_val, like_val))
+        else:
+            cursor.execute("""
+                SELECT id, search_id, query, region, engine, page_offset, result_count, created_at
+                FROM search_archive
+                ORDER BY created_at DESC
+            """)
+        rows = cursor.fetchall()
+        conn.close()
+        results = [dict(row) for row in rows]
+        return jsonify(results)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/serpapi-history/<int:archive_id>", methods=["GET"])
+def get_serpapi_cache_detail(archive_id):
+    """
+    Return the full cached JSON response for a specific search archive entry.
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT json_response FROM search_archive WHERE id = ?", (archive_id,))
+        row = cursor.fetchone()
+        conn.close()
+        if not row or not row["json_response"]:
+            return jsonify({"error": "Cache entry not found"}), 404
+        return jsonify(json.loads(row["json_response"]))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/serpapi-history/purge", methods=["DELETE"])
+def purge_serpapi_history():
+    """
+    Delete expired cache entries (older than 31 days).
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM search_archive WHERE datetime(created_at) < datetime('now', '-31 days')")
+        purged = cursor.rowcount
+        conn.commit()
+        conn.close()
+        return jsonify({"status": "success", "purged": purged})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
-    print(f"Starting Cold Data Dashboard on http://localhost:{port}")
+    print(f"Starting Cold Data Scrapper (CDS) on http://localhost:{port}")
     app.run(host="0.0.0.0", port=port, debug=True)
