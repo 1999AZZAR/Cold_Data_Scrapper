@@ -336,6 +336,23 @@ function openModal(index) {
     document.getElementById("modal-lon").textContent = lead.longitude || "-";
     document.getElementById("modal-price").textContent = lead.price_range || "Not specified";
     
+    // Render map preview using OpenStreetMap embed
+    const mapContainer = document.getElementById("modal-map-container");
+    const mapIframe = document.getElementById("modal-map-iframe");
+    if (mapContainer && mapIframe) {
+        const lat = parseFloat(lead.latitude);
+        const lon = parseFloat(lead.longitude);
+        if (!isNaN(lat) && !isNaN(lon)) {
+            const delta = 0.003;
+            const bbox = `${lon - delta},${lat - delta},${lon + delta},${lat + delta}`;
+            mapIframe.src = `https://www.openstreetmap.org/export/embed.html?bbox=${encodeURIComponent(bbox)}&layer=mapnik&marker=${lat},${lon}`;
+            mapContainer.classList.remove("hidden");
+        } else {
+            mapIframe.src = "";
+            mapContainer.classList.add("hidden");
+        }
+    }
+    
     // Render opportunity score badge in modal
     const score = lead.opportunity_score || 0;
     const modalScoreBadge = document.getElementById("modal-score-badge");
@@ -443,6 +460,10 @@ function openModal(index) {
 
 function closeModal() {
     document.getElementById("detail-modal").classList.add("hidden");
+    const mapIframe = document.getElementById("modal-map-iframe");
+    if (mapIframe) {
+        mapIframe.src = "";
+    }
 }
 
 // Utility to escape HTML output
