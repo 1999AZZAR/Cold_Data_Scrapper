@@ -286,20 +286,45 @@ def run_playwright(query, region, limit):
             
         # Get elements
         cards = page.query_selector_all("a[href*='/maps/place/']")
-        log(f"Found {len(cards)} places total. Beginning extraction...")
+        total_cards = len(cards)
+        log(f"Found {total_cards} places total. Beginning extraction...")
+        
+        # Collect all place hrefs first
+        place_hrefs = []
+        for card in cards:
+            href = card.get_attribute("href")
+            if href and "/maps/place/" in href:
+                place_hrefs.append(href)
         
         count = 0
-        for card in cards:
+        for idx, href in enumerate(place_hrefs):
             if count >= effective_limit:
                 break
                 
             try:
-                # Hover and click to trigger detail view
-                card.click()
-                page.wait_for_timeout(1500)
+                # Re-query cards each iteration (DOM changes after click)
+                cards = page.query_selector_all("a[href*='/maps/place/']")
+                
+                # Find the card with matching href
+                target_card = None
+                for c in cards:
+                    c_href = c.get_attribute("href")
+                    if c_href == href:
+                        target_card = c
+                        break
+                
+                if not target_card:
+                    # Card not found, try navigating directly
+                    page.goto(href)
+                    page.wait_for_timeout(2000)
+                else:
+                    target_card.click()
+                    page.wait_for_timeout(2000)
+                
+                current_url = page.url
                 
                 # Scrape detail view
-                name_elem = page.query_selector("h1")
+                name_elem = page.query_selector("h1.DUwDvf") or page.query_selector(".qBF1Pd") or page.query_selector("h1")
                 name = name_elem.inner_text() if name_elem else "Unnamed Business"
                 
                 # Categorization (usually text next to rating stars)
@@ -344,7 +369,7 @@ def run_playwright(query, region, limit):
                     pass
 
                 records.append({
-                    "source_id": card.get_attribute("href").split("/place/")[1].split("/")[0],
+                    "source_id": href.split("/place/")[1].split("/")[0] if "/place/" in href else "",
                     "name": name,
                     "category": category,
                     "latitude": lat,
