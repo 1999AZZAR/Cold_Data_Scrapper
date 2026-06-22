@@ -254,7 +254,7 @@ def trigger_action():
 @app.route("/api/export", methods=["GET"])
 def download_export():
     """
-    Helper to trigger XML or CSV exports and download the file.
+    Helper to trigger XML, CSV or JSON exports and download the file.
     """
     run_id = request.args.get("run_id")
     search = request.args.get("search")
@@ -263,7 +263,14 @@ def download_export():
     show_duplicates = request.args.get("duplicates", "false").lower() == "true"
     format_type = request.args.get("format", "csv").lower()
     
-    if format_type not in ("csv", "xml"):
+    # New filter controls
+    has_email = request.args.get("has_email", "false").lower() == "true"
+    has_phone = request.args.get("has_phone", "false").lower() == "true"
+    has_website = request.args.get("has_website", "false").lower() == "true"
+    min_score = request.args.get("min_score")
+    columns = request.args.get("columns")
+    
+    if format_type not in ("csv", "xml", "json"):
         return "Invalid format", 400
         
     # Generate an appropriate output prefix based on filters
@@ -280,7 +287,7 @@ def download_export():
         prefix = "export_all"
         
     # Run export script
-    cmd = [sys.executable, "pipeline/export_converter.py", "-o", prefix]
+    cmd = [sys.executable, "pipeline/export_converter.py", "-o", prefix, "-f", format_type]
     if run_id:
         cmd += ["--run-id", run_id]
     if query_val:
@@ -291,6 +298,16 @@ def download_export():
         cmd += ["-s", search]
     if show_duplicates:
         cmd += ["--show-duplicates"]
+    if has_email:
+        cmd += ["--has-email"]
+    if has_phone:
+        cmd += ["--has-phone"]
+    if has_website:
+        cmd += ["--has-website"]
+    if min_score:
+        cmd += ["--min-score", min_score]
+    if columns:
+        cmd += ["--columns", columns]
         
     try:
         subprocess.run(cmd, check=True)

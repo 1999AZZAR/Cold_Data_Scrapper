@@ -533,15 +533,39 @@ function escapeHtml(text) {
     return text.replace(/[&<>'"]/g, m => map[m]);
 }
 
-// Dynamic exporter matching current UI filters (selected run, query text, duplicate state)
-function triggerExport(format) {
+// Dynamic exporter matching current UI filters, contact filters, and selected columns
+function triggerExport() {
+    const format = document.getElementById("export-format").value;
     const runId = document.getElementById("run-filter").value;
     const search = document.getElementById("search-input").value;
     const showDuplicates = document.getElementById("dup-checkbox").checked;
     
-    let url = `/api/export?format=${format}&duplicates=${showDuplicates}`;
+    // Filters
+    const hasEmail = document.getElementById("export-has-email").checked;
+    const hasPhone = document.getElementById("export-has-phone").checked;
+    const hasWebsite = document.getElementById("export-has-website").checked;
+    const minScore = document.getElementById("export-min-score").value;
+    
+    // Columns selection
+    let colList = ["id", "name", "category", "address", "opportunity_score", "source", "source_id"];
+    if (document.getElementById("export-col-contacts").checked) {
+        colList.push("phone", "email", "website", "email_verified", "phone_verified");
+    }
+    if (document.getElementById("export-col-geo").checked) {
+        colList.push("latitude", "longitude", "maps_link");
+    }
+    if (document.getElementById("export-col-socials").checked) {
+        colList.push("instagram", "facebook", "whatsapp");
+    }
+    if (document.getElementById("export-col-meta").checked) {
+        colList.push("opening_hours", "cuisine", "brand", "price_range");
+    }
+    const columns = colList.join(",");
+    
+    let url = `/api/export?format=${format}&duplicates=${showDuplicates}&has_email=${hasEmail}&has_phone=${hasPhone}&has_website=${hasWebsite}&columns=${columns}`;
     if (runId) url += `&run_id=${runId}`;
     if (search) url += `&search=${encodeURIComponent(search)}`;
+    if (minScore) url += `&min_score=${minScore}`;
     
     window.location.href = url;
 }

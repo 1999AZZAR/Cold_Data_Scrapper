@@ -273,16 +273,73 @@
                 </div>
 
                 <!-- Export settings -->
-                <div class="polaris-card">
-                    <h2 class="text-base font-display font-bold mb-4 border-b border-slate-100 pb-2 text-slate-900"><i class="fa-solid fa-download mr-2 text-slate-500"></i>Export Filtered View</h2>
-                    <div class="flex flex-col gap-3 font-mono text-xs">
-                        <button onclick="triggerExport('csv')" class="w-full py-2.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 font-bold text-center block rounded transition duration-150">
-                            <i class="fa-solid fa-file-csv mr-1.5 text-emerald-600"></i>EXPORT AS CSV
-                        </button>
-                        <button onclick="triggerExport('xml')" class="w-full py-2.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-800 font-bold text-center block rounded transition duration-150">
-                            <i class="fa-solid fa-code mr-1.5 text-blue-600"></i>EXPORT AS XML
-                        </button>
+                <div class="polaris-card flex flex-col gap-4">
+                    <h2 class="text-base font-display font-bold border-b border-slate-100 pb-2 text-slate-900"><i class="fa-solid fa-download mr-2 text-slate-500"></i>Export Options</h2>
+                    
+                    <!-- Format selection -->
+                    <div class="text-xs font-mono">
+                        <label class="block uppercase font-bold text-slate-600 mb-1">Format</label>
+                        <select id="export-format" class="w-full bg-[#f6f6f7] hover:bg-[#edeeef] border border-[#babfc3] text-[#202223] py-2 px-3 rounded cursor-pointer transition focus:outline-none focus:ring-1 focus:ring-slate-900">
+                            <option value="csv">CSV (Spreadsheet)</option>
+                            <option value="xml">XML (Structure)</option>
+                            <option value="json">JSON (Developer)</option>
+                        </select>
                     </div>
+
+                    <!-- Contact Filters -->
+                    <div class="text-xs font-mono">
+                        <label class="block uppercase font-bold text-slate-600 mb-1">Data Filters</label>
+                        <div class="flex flex-col gap-2 bg-[#f4f6f8] p-3 border border-[#e1e3e5] rounded">
+                            <label class="flex items-center gap-2 cursor-pointer font-sans text-slate-700">
+                                <input type="checkbox" id="export-has-email" class="rounded border-[#babfc3] text-slate-900 focus:ring-slate-900">
+                                <span>Only with email</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer font-sans text-slate-700">
+                                <input type="checkbox" id="export-has-phone" class="rounded border-[#babfc3] text-slate-900 focus:ring-slate-900">
+                                <span>Only with phone</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer font-sans text-slate-700">
+                                <input type="checkbox" id="export-has-website" class="rounded border-[#babfc3] text-slate-900 focus:ring-slate-900">
+                                <span>Only with website</span>
+                            </label>
+                            
+                            <div class="mt-2 font-mono">
+                                <span class="block text-[10px] text-slate-500 font-bold uppercase mb-1">Min Opportunity</span>
+                                <select id="export-min-score" class="w-full bg-white border border-[#babfc3] text-[#202223] py-1 px-2 rounded cursor-pointer">
+                                    <option value="">All Scores</option>
+                                    <option value="40">&gt;= 40 (Medium/High)</option>
+                                    <option value="70">&gt;= 70 (High Only)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Column selection -->
+                    <div class="text-xs font-mono">
+                        <label class="block uppercase font-bold text-slate-600 mb-1">Included Columns</label>
+                        <div class="flex flex-col gap-2 bg-[#f4f6f8] p-3 border border-[#e1e3e5] rounded font-sans text-slate-700">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="export-col-contacts" checked class="rounded border-[#babfc3] text-slate-900 focus:ring-slate-900">
+                                <span>Contacts (Email, Phone, Website)</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="export-col-geo" checked class="rounded border-[#babfc3] text-slate-900 focus:ring-slate-900">
+                                <span>Geo (Coordinates, Map Link)</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="export-col-socials" checked class="rounded border-[#babfc3] text-slate-900 focus:ring-slate-900">
+                                <span>Socials (Insta, FB, WA)</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="export-col-meta" checked class="rounded border-[#babfc3] text-slate-900 focus:ring-slate-900">
+                                <span>Metadata (Hours, Price, Cuisine)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <button onclick="triggerExport()" class="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-center rounded flex justify-center items-center gap-2 transition duration-100 font-mono text-xs">
+                        <i class="fa-solid fa-download"></i>EXPORT DATASET
+                    </button>
                 </div>
             </div>
 

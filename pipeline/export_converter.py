@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Export Converter
-Reads clean leads from the database and exports them to XML & CSV formats.
+Reads clean leads from the database and exports them to XML, CSV, & JSON formats.
 """
 
 import os
@@ -24,7 +24,8 @@ def get_db_connection():
     conn.execute("PRAGMA busy_timeout=30000;")
     return conn
 
-def fetch_clean_leads(run_id=None, query_filter=None, region_filter=None, search=None, show_duplicates=False):
+def fetch_clean_leads(run_id=None, query_filter=None, region_filter=None, search=None, show_duplicates=False,
+                      has_email=False, has_phone=False, has_website=False, min_score=None):
     """
     Fetches clean (or all) leads from SQLite database matching filters.
     """
@@ -64,6 +65,16 @@ def fetch_clean_leads(run_id=None, query_filter=None, region_filter=None, search
         like_val = f"%{search}%"
         params.extend([like_val, like_val, like_val])
         
+    if has_email:
+        query += " AND l.email IS NOT NULL AND l.email != ''"
+    if has_phone:
+        query += " AND l.phone IS NOT NULL AND l.phone != ''"
+    if has_website:
+        query += " AND l.website IS NOT NULL AND l.website != ''"
+    if min_score is not None:
+        query += " AND l.opportunity_score >= ?"
+        params.append(min_score)
+        
     query += " ORDER BY l.name ASC"
     
     cursor.execute(query, params)
@@ -99,13 +110,25 @@ def export_csv(records, filepath):
         writer.writerows(records)
     log(f"Exported CSV successfully: {filepath}")
 
+def export_json(records, filepath):
+    import json
+    with open(filepath, "w", encoding="utf-8") as f:
+        json.dump(records, f, indent=2, ensure_ascii=False)
+    log(f"Exported JSON successfully: {filepath}")
+
 def main():
-    parser = argparse.ArgumentParser(description="Exports clean database leads to XML & CSV.")
+    parser = argparse.ArgumentParser(description="Exports clean database leads to XML, CSV & JSON.")
     parser.add_argument("--run-id", type=int, help="Filter by specific scraper run ID")
     parser.add_argument("-q", "--query", help="Filter by run query (e.g. 'cafe')")
     parser.add_argument("-r", "--region", help="Filter by run region (e.g. 'Jakarta Selatan')")
     parser.add_argument("-s", "--search", help="Filter by general text search query")
     parser.add_argument("--show-duplicates", action="store_true", help="Include duplicate records in export")
+    parser.add_argument("--has-email", action="store_true", help="Only export leads with email address")
+    parser.add_argument("--has-phone", action="store_true", help="Only export leads with phone number")
+    parser.add_argument("--has-website", action="store_true", help="Only export leads with website")
+    parser.add_argument("--min-score", type=int, help="Only export leads with opportunity score >= min_score")
+    parser.add_argument("--columns", help="Comma-separated list of columns to include in export")
+    parser.add_argument("-f", "--format", choices=["csv", "xml", "json"], default="csv", help="Export format")
     parser.add_argument("-o", "--output", required=True, help="Output file prefix")
     
     args = parser.parse_args()
@@ -115,7 +138,11 @@ def main():
         query_filter=args.query, 
         region_filter=args.region,
         search=args.search,
-        show_duplicates=args.show_duplicates
+        show_duplicates=args.show_duplicates,
+        has_email=args.has_email,
+        has_phone=args.has_phone,
+        has_website=args.has_website,
+        min_score=args.min_score
     )
     log(f"Fetched {len(records)} clean leads for exporting.")
     
@@ -123,13 +150,27 @@ def main():
         log("No matching records found. Exiting.", "WARNING")
         sys.exit(0)
         
+    # Filter columns if specified
+    if args.columns:
+        cols = [c.strip() for c in args.columns.split(",") if c.strip()]
+        filtered_records = []
+        for r in records:
+            filtered_r = {k: r[k] for k in cols if k in r}
+            filtered_records.append(filtered_r)
+        records = filtered_records
+        
     output_prefix = args.output
     os.makedirs("exports", exist_ok=True)
     if not output_prefix.startswith("exports/"):
         output_prefix = os.path.join("exports", os.path.basename(output_prefix))
         
-    export_xml(records, f"{output_prefix}.xml")
-    export_csv(records, f"{output_prefix}.csv")
+    if args.format == "csv":
+        export_csv(records, f"{output_prefix}.csv")
+    elif args.format == "xml":
+        export_xml(records, f"{output_prefix}.xml")
+    elif args.format == "json":
+        export_json(records, f"{output_prefix}.json")
+        
     log("Export completed successfully.", "SUCCESS")
 
 if __name__ == "__main__":
