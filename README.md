@@ -16,14 +16,16 @@ graph TD
     B --> E[extractor_gmaps.py]
     D --> F[(cold_data.db)]
     E --> F
-    F --> G[enricher_socials.py]
+    F --> G[cleanup_trash.py]
     G --> F
-    F --> H[validator_contacts.py]
+    F --> H[enricher_socials.py]
     H --> F
-    F --> I[deduplicator.py]
+    F --> I[validator_contacts.py]
     I --> F
-    F --> J[export_converter.py]
-    J --> K[XML / CSV Output]
+    F --> J[deduplicator.py]
+    J --> F
+    F --> K[export_converter.py]
+    K --> L[XML / CSV / JSON Output]
 ```
 
 ---
@@ -36,33 +38,41 @@ graph TD
    - Resolves search regions via Nominatim geocoding and queries Overpass API mirrors.
 3. **Google Maps Extractor (`extractor_gmaps.py`)**
    - Supports SerpApi Google Maps search (fast, reliable) and fallback Playwright browser automation scraper.
-4. **Social Contacts Enricher (`enricher_socials.py`)**
+4. **Trash Cleanup (`cleanup_trash.py`)**
+   - Removes unnamed, generic, or junk businesses from leads (marks as duplicates).
+5. **Social Contacts Enricher (`enricher_socials.py`)**
    - Crawls business websites or queries DuckDuckGo search to extract public emails, Instagram handles, Facebook pages, and WhatsApp contacts.
-5. **Contact Validator (`validator_contacts.py`)**
+6. **Contact Validator (`validator_contacts.py`)**
    - Formats phone numbers, creates direct WhatsApp chat links, and checks email domain validity using native Linux DNS host checks.
-6. **Lead Deduplicator (`deduplicator.py`)**
-   - Finds geographic duplicates within 100m using Haversine formula and name similarity using `difflib`. Merges contacts and flags duplicates.
-7. **Export Exporter (`export_converter.py`)**
-   - Reads clean leads from the database and exports them to XML and CSV.
-8. **CLI Orchestrator (`orchestrator.py`)**
+7. **Lead Deduplicator (`deduplicator.py`)**
+   - Finds geographic duplicates using Haversine formula and name similarity. Merges contacts across sources (GMaps + OSM).
+8. **Export Exporter (`export_converter.py`)**
+   - Reads clean leads from the database and exports them to XML, CSV, and JSON.
+9. **CLI Orchestrator (`orchestrator.py`)**
    - Standardized interface to run single stages or trigger the entire pipeline end-to-end. Outputs JSON.
 
 ---
 
 ## Setup & Execution
 
-### 1. Initialize Database
+### 1. Setup Environment
+```bash
+# Copy the example env file and fill in your API keys
+cp env.example .env
+```
+
+### 2. Initialize Database
 ```bash
 ./orchestrator.py init
 ```
 
-### 2. Run End-to-End Pipeline
+### 3. Run End-to-End Pipeline
 Runs extraction, social media enrichment, phone/email validation, geographical deduplication, and exports the clean dataset to XML & CSV:
 ```bash
 ./orchestrator.py run-all -q "cafe" -r "Jakarta Selatan" -o jaksel_cafes
 ```
 
-### 3. Run Individual Modules
+### 4. Run Individual Modules
 ```bash
 # Run OSM extractor only
 ./orchestrator.py extract-osm -q "restaurant" -r "Bandung" -o bandung_food
@@ -83,7 +93,7 @@ Runs extraction, social media enrichment, phone/email validation, geographical d
 ./orchestrator.py export -o output_data -q "cafe" -r "Jakarta Selatan"
 ```
 
-### 4. Run Dashboard Web UI
+### 5. Run Dashboard Web UI
 Launches a Flask web server on port 8080 to interactively trigger runs, view leads, and export datasets:
 ```bash
 python3 server.py

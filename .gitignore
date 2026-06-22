@@ -12,7 +12,7 @@ memory.db
 # Environment & Credentials
 .env
 .env.*
-!.env.example
+env.example
 
 # Python Cache & Artifacts
 __pycache__/
