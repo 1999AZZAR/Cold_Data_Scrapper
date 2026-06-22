@@ -148,37 +148,42 @@ def delete_run(run_id):
 @app.route("/api/runs/<int:run_id>/rerun", methods=["POST"])
 def rerun_run(run_id):
     """
-    Reruns an existing scraper run using its query and region.
+    Reruns an existing scraper run using its query and region, reusing the run_id.
     """
+    data = request.json or {}
+    limit = data.get("limit")
+    
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT query, region FROM runs WHERE id = ?", (run_id,))
         row = cursor.fetchone()
-        conn.close()
         
         if not row:
+            conn.close()
             return jsonify({"error": "Run not found"}), 404
             
         query = row["query"]
         region = row["region"]
         
-        conn = get_db_connection()
-        cursor = conn.cursor()
+        # Clear out old leads associated with this run_id
+        cursor.execute("DELETE FROM leads WHERE run_id = ?", (run_id,))
+        # Reset run status to running
         cursor.execute(
-            "INSERT INTO runs (query, region, status) VALUES (?, ?, 'running')",
-            (query, region)
+            "UPDATE runs SET status='running', results_count=0, updated_at=CURRENT_TIMESTAMP WHERE id = ?",
+            (run_id,)
         )
-        new_run_id = cursor.lastrowid
         conn.commit()
         conn.close()
         
-        cmd_args = ["run-all", "-q", query, "-r", region, "-o", f"data_{new_run_id}", "--run-id", str(new_run_id)]
-        
-        thread = threading.Thread(target=run_pipeline_async, args=(cmd_args, new_run_id))
+        cmd_args = ["run-all", "-q", query, "-r", region, "-o", f"data_{run_id}", "--run-id", str(run_id)]
+        if limit:
+            cmd_args += ["-l", str(limit)]
+            
+        thread = threading.Thread(target=run_pipeline_async, args=(cmd_args, run_id))
         thread.start()
         
-        return jsonify({"status": "started", "run_id": new_run_id})
+        return jsonify({"status": "started", "run_id": run_id})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

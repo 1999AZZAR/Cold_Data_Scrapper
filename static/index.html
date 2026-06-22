@@ -481,6 +481,31 @@
         </div>
     </div>
 
+    <!-- Rerun Limit Modal (Polaris x Swiss style) -->
+    <div id="rerun-modal" class="fixed inset-0 bg-slate-900/50 hidden flex items-center justify-center p-4 z-[60] transition duration-150 modal-overlay-animate">
+        <div class="bg-white border border-[#babfc3] max-w-sm w-full p-6 rounded shadow-xl flex flex-col gap-4 relative modal-content-animate">
+            <h3 class="text-sm font-display font-bold text-[#202223]">Rerun Scraper</h3>
+            <p class="text-xs text-slate-600 leading-relaxed font-sans">
+                Select the output records limit for this run. Note that this rerun will overwrite the previous results for this run history entry.
+            </p>
+            <div>
+                <label class="block text-[10px] uppercase text-[#6d7175] font-bold tracking-wider font-mono mb-1">Results Limit</label>
+                <select id="rerun-limit" class="w-full bg-[#f6f6f7] hover:bg-[#edeeef] border border-[#babfc3] text-[#202223] text-xs font-mono py-2 px-3 rounded cursor-pointer transition focus:outline-none focus:ring-1 focus:ring-slate-900">
+                    <option value="">Unlimited</option>
+                    <option value="10">10 records</option>
+                    <option value="20">20 records</option>
+                    <option value="50">50 records</option>
+                    <option value="100">100 records</option>
+                    <option value="200">200 records</option>
+                </select>
+            </div>
+            <div class="flex gap-3 mt-2 font-mono text-xs justify-end">
+                <button onclick="closeRerunModal()" class="px-4 py-2 bg-white hover:bg-[#f6f6f7] border border-[#babfc3] text-[#202223] font-bold rounded transition">Cancel</button>
+                <button id="rerun-submit-btn" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded transition">Start Rerun</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Container for custom alert messages -->
     <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
 

@@ -188,22 +188,52 @@ async function deleteRun(runId) {
 }
 
 // Rerun a specific run
-async function rerunRun(runId) {
-    try {
-        const response = await fetch(`/api/runs/${runId}/rerun`, {
-            method: "POST"
-        });
-        const res = await response.json();
+function rerunRun(runId) {
+    const rerunModal = document.getElementById("rerun-modal");
+    const rerunLimit = document.getElementById("rerun-limit");
+    const submitBtn = document.getElementById("rerun-submit-btn");
+    
+    if (rerunModal && rerunLimit && submitBtn) {
+        rerunLimit.value = "";
         
-        if (res.status === "started") {
-            showToast(`Scraper rerun (ID #${res.run_id}) started in the background!`, "success");
-            loadRuns();
-            loadStatus();
-        } else {
-            showToast(`Error: ${res.error}`, "error");
-        }
-    } catch (err) {
-        showToast(`Failed to trigger rerun: ${err}`, "error");
+        submitBtn.onclick = async () => {
+            closeRerunModal();
+            const limitVal = rerunLimit.value;
+            const limit = limitVal ? parseInt(limitVal) : null;
+            
+            try {
+                const response = await fetch(`/api/runs/${runId}/rerun`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ limit })
+                });
+                const res = await response.json();
+                
+                if (res.status === "started") {
+                    showToast(`Scraper rerun (ID #${res.run_id}) started in the background!`, "success");
+                    loadRuns();
+                    loadStatus();
+                    
+                    const currentFilter = document.getElementById("run-filter").value;
+                    if (currentFilter == runId) {
+                        loadLeads();
+                    }
+                } else {
+                    showToast(`Error: ${res.error}`, "error");
+                }
+            } catch (err) {
+                showToast(`Failed to trigger rerun: ${err}`, "error");
+            }
+        };
+        
+        rerunModal.classList.remove("hidden");
+    }
+}
+
+function closeRerunModal() {
+    const rerunModal = document.getElementById("rerun-modal");
+    if (rerunModal) {
+        rerunModal.classList.add("hidden");
     }
 }
 
