@@ -4,6 +4,12 @@ A modular, database-centric pipeline to extract, validate, enrich, deduplicate, 
 
 ---
 
+![Dashboard Preview](demo/dashboard.png)
+
+![Lead Detail Popup](demo/popup_detail.png)
+
+---
+
 ## Architecture
 
 The pipeline consists of independent modular Python scripts coordinating through a shared SQLite database (`cold_data.db`). A unified Orchestrator CLI wraps the modules, outputting JSON status logs for easy dashboard integration.
