@@ -55,24 +55,37 @@ graph TD
 
 ## Setup & Execution
 
-### 1. Setup Environment
+### 1. Create Virtual Environment & Install Dependencies
+```bash
+# Create and activate virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Install required packages
+pip install -r requirements.txt
+
+# Install Playwright browser (for fallback Google Maps scraper)
+playwright install chromium
+```
+
+### 2. Setup Environment
 ```bash
 # Copy the example env file and fill in your API keys
 cp env.example .env
 ```
 
-### 2. Initialize Database
+### 3. Initialize Database
 ```bash
 ./orchestrator.py init
 ```
 
-### 3. Run End-to-End Pipeline
+### 4. Run End-to-End Pipeline
 Runs extraction, social media enrichment, phone/email validation, geographical deduplication, and exports the clean dataset to XML & CSV:
 ```bash
 ./orchestrator.py run-all -q "cafe" -r "Jakarta Selatan" -o jaksel_cafes
 ```
 
-### 4. Run Individual Modules
+### 5. Run Individual Modules
 ```bash
 # Run OSM extractor only
 ./orchestrator.py extract-osm -q "restaurant" -r "Bandung" -o bandung_food
@@ -93,7 +106,7 @@ Runs extraction, social media enrichment, phone/email validation, geographical d
 ./orchestrator.py export -o output_data -q "cafe" -r "Jakarta Selatan"
 ```
 
-### 5. Run Dashboard Web UI
+### 6. Run Dashboard Web UI
 Launches a Flask web server on port 8080 to interactively trigger runs, view leads, and export datasets:
 ```bash
 python3 server.py
