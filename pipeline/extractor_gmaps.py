@@ -69,7 +69,8 @@ def run_serpapi(query, region, api_key, limit):
                 "brand": "",
                 "instagram": "",
                 "facebook": "",
-                "whatsapp": ""
+                "whatsapp": "",
+                "price_range": item.get("price", "")
             })
         return records
     except Exception as e:
@@ -168,6 +169,23 @@ def run_playwright(query, region, limit):
                     if len(parts) >= 2:
                         lat, lon = float(parts[0]), float(parts[1])
                 
+                # Price range/level (e.g., $$, $$$ or price per person range)
+                price_range = ""
+                try:
+                    price_elem = page.query_selector("span[aria-label*='price'], span[aria-label*='Price'], span[aria-label*='harga'], span[aria-label*='Harga']")
+                    if price_elem:
+                        price_range = price_elem.inner_text().strip()
+                    else:
+                        details_container = page.query_selector("div[class*='fontBodyMedium']")
+                        if details_container:
+                            text = details_container.inner_text()
+                            import re
+                            price_match = re.search(r'(Rp\s*\d+[\d.,]*\s*–\s*Rp\s*\d+[\d.,]*|Rp\s*\d+[\d.,]*\s*–\s*\d+[\d.,]*|\$\d+\s*–\s*\d+|\b\${1,4}\b)', text)
+                            if price_match:
+                                price_range = price_match.group(0).strip()
+                except Exception:
+                    pass
+
                 records.append({
                     "source_id": card.get_attribute("href").split("/place/")[1].split("/")[0],
                     "name": name,
@@ -183,7 +201,8 @@ def run_playwright(query, region, limit):
                     "brand": "",
                     "instagram": "",
                     "facebook": "",
-                    "whatsapp": ""
+                    "whatsapp": "",
+                    "price_range": price_range
                 })
                 count += 1
                 log(f"Extracted: {name}")
@@ -240,12 +259,12 @@ def save_to_db(records, query_name, region_name, run_id=None):
                 INSERT OR REPLACE INTO leads (
                     run_id, source, source_id, name, category, latitude, longitude,
                     address, phone, website, email, opening_hours, cuisine, brand,
-                    instagram, facebook, whatsapp, opportunity_score, updated_at
-                ) VALUES (?, 'gmaps', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                    instagram, facebook, whatsapp, opportunity_score, price_range, updated_at
+                ) VALUES (?, 'gmaps', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 """, (
                     run_id, r["source_id"], r["name"], r["category"], r["latitude"], r["longitude"],
                     r["address"], r["phone"], r["website"], r["email"], r["opening_hours"],
-                    r["cuisine"], r["brand"], r["instagram"], r["facebook"], r["whatsapp"], score
+                    r["cuisine"], r["brand"], r["instagram"], r["facebook"], r["whatsapp"], score, r.get("price_range")
                 ))
                 inserted_count += 1
             except sqlite3.Error as e:

@@ -62,6 +62,7 @@ def init_db():
         phone_verified INTEGER DEFAULT 0,
         duplicate_of INTEGER,
         opportunity_score INTEGER DEFAULT 0,
+        price_range TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(source, source_id),
@@ -72,6 +73,11 @@ def init_db():
     # Schema migration safeguard for existing databases
     try:
         cursor.execute("ALTER TABLE leads ADD COLUMN opportunity_score INTEGER DEFAULT 0;")
+    except sqlite3.OperationalError:
+        pass
+
+    try:
+        cursor.execute("ALTER TABLE leads ADD COLUMN price_range TEXT;")
     except sqlite3.OperationalError:
         pass
 

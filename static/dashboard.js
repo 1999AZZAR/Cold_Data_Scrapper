@@ -334,6 +334,7 @@ function openModal(index) {
     document.getElementById("modal-hours").textContent = lead.opening_hours || "-";
     document.getElementById("modal-lat").textContent = lead.latitude || "-";
     document.getElementById("modal-lon").textContent = lead.longitude || "-";
+    document.getElementById("modal-price").textContent = lead.price_range || "Not specified";
     
     // Render opportunity score badge in modal
     const score = lead.opportunity_score || 0;
