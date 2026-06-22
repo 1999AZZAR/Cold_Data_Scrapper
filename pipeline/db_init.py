@@ -63,6 +63,7 @@ def init_db():
         duplicate_of INTEGER,
         opportunity_score INTEGER DEFAULT 0,
         price_range TEXT,
+        maps_link TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(source, source_id),
@@ -78,6 +79,11 @@ def init_db():
 
     try:
         cursor.execute("ALTER TABLE leads ADD COLUMN price_range TEXT;")
+    except sqlite3.OperationalError:
+        pass
+
+    try:
+        cursor.execute("ALTER TABLE leads ADD COLUMN maps_link TEXT;")
     except sqlite3.OperationalError:
         pass
 

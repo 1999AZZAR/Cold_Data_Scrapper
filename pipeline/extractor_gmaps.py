@@ -70,7 +70,8 @@ def run_serpapi(query, region, api_key, limit):
                 "instagram": "",
                 "facebook": "",
                 "whatsapp": "",
-                "price_range": item.get("price", "")
+                "price_range": item.get("price", ""),
+                "maps_link": item.get("link", "")
             })
         return records
     except Exception as e:
@@ -202,7 +203,8 @@ def run_playwright(query, region, limit):
                     "instagram": "",
                     "facebook": "",
                     "whatsapp": "",
-                    "price_range": price_range
+                    "price_range": price_range,
+                    "maps_link": current_url
                 })
                 count += 1
                 log(f"Extracted: {name}")
@@ -259,12 +261,12 @@ def save_to_db(records, query_name, region_name, run_id=None):
                 INSERT OR REPLACE INTO leads (
                     run_id, source, source_id, name, category, latitude, longitude,
                     address, phone, website, email, opening_hours, cuisine, brand,
-                    instagram, facebook, whatsapp, opportunity_score, price_range, updated_at
-                ) VALUES (?, 'gmaps', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                    instagram, facebook, whatsapp, opportunity_score, price_range, maps_link, updated_at
+                ) VALUES (?, 'gmaps', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 """, (
                     run_id, r["source_id"], r["name"], r["category"], r["latitude"], r["longitude"],
                     r["address"], r["phone"], r["website"], r["email"], r["opening_hours"],
-                    r["cuisine"], r["brand"], r["instagram"], r["facebook"], r["whatsapp"], score, r.get("price_range")
+                    r["cuisine"], r["brand"], r["instagram"], r["facebook"], r["whatsapp"], score, r.get("price_range"), r.get("maps_link")
                 ))
                 inserted_count += 1
             except sqlite3.Error as e:

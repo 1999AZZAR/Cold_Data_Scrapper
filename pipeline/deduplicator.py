@@ -50,7 +50,7 @@ def merge_leads(primary, secondary):
     Returns a dict of fields to update in primary.
     """
     updates = {}
-    fields = ["phone", "website", "email", "opening_hours", "cuisine", "brand", "instagram", "facebook", "whatsapp", "price_range"]
+    fields = ["phone", "website", "email", "opening_hours", "cuisine", "brand", "instagram", "facebook", "whatsapp", "price_range", "maps_link"]
     
     for f in fields:
         p_val = primary.get(f)
@@ -81,7 +81,7 @@ def deduplicate():
     cursor.execute("""
     SELECT id, run_id, source, source_id, name, category, latitude, longitude,
            address, phone, website, email, opening_hours, cuisine, brand,
-           instagram, facebook, whatsapp, price_range
+           instagram, facebook, whatsapp, price_range, maps_link
     FROM leads
     WHERE duplicate_of IS NULL
     """)

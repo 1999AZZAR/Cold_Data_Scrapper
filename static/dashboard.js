@@ -420,6 +420,23 @@ function openModal(index) {
         webBtn.href = "#";
         webBtn.classList.add("opacity-50", "pointer-events-none");
     }
+
+    // Maps button
+    const mapsBtn = document.getElementById("modal-maps-btn");
+    if (mapsBtn) {
+        let mapsLink = lead.maps_link;
+        if (!mapsLink && lead.latitude && lead.longitude) {
+            const nameQuery = encodeURIComponent(lead.name);
+            mapsLink = `https://www.google.com/maps/search/?api=1&query=${nameQuery}+${lead.latitude},${lead.longitude}`;
+        }
+        if (mapsLink) {
+            mapsBtn.href = mapsLink;
+            mapsBtn.classList.remove("opacity-50", "pointer-events-none");
+        } else {
+            mapsBtn.href = "#";
+            mapsBtn.classList.add("opacity-50", "pointer-events-none");
+        }
+    }
     
     document.getElementById("detail-modal").classList.remove("hidden");
 }

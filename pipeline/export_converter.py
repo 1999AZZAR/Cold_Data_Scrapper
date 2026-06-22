@@ -40,7 +40,7 @@ def fetch_clean_leads(run_id=None, query_filter=None, region_filter=None, search
     SELECT l.id, l.name, l.category, l.latitude, l.longitude, l.address,
            l.phone, l.website, l.email, l.opening_hours, l.cuisine, l.brand,
            l.instagram, l.facebook, l.whatsapp, l.email_verified, l.phone_verified,
-           l.source, l.source_id, l.opportunity_score, l.price_range
+           l.source, l.source_id, l.opportunity_score, l.price_range, l.maps_link
     FROM leads l
     LEFT JOIN runs r ON l.run_id = r.id
     WHERE 1=1

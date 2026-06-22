@@ -199,6 +199,12 @@ def parse_elements(elements):
         facebook = tags.get("contact:facebook") or tags.get("facebook", "")
         price_range = tags.get("price_range") or tags.get("price:range") or tags.get("price") or tags.get("fee", "")
         
+        import urllib.parse
+        if lat and lon:
+            maps_link = f"https://www.google.com/maps/search/?api=1&query={urllib.parse.quote(name)}+{lat},{lon}"
+        else:
+            maps_link = ""
+
         parsed_records.append({
             "source_id": str(el.get("id", "")),
             "name": name,
@@ -215,7 +221,8 @@ def parse_elements(elements):
             "instagram": instagram,
             "facebook": facebook,
             "whatsapp": phone if "whatsapp" in phone.lower() or tags.get("contact:whatsapp") else "",
-            "price_range": price_range
+            "price_range": price_range,
+            "maps_link": maps_link
         })
         
     return parsed_records
@@ -270,12 +277,12 @@ def save_to_db(records, query_name, region_name, run_id=None):
                 INSERT OR REPLACE INTO leads (
                     run_id, source, source_id, name, category, latitude, longitude,
                     address, phone, website, email, opening_hours, cuisine, brand,
-                    instagram, facebook, whatsapp, opportunity_score, price_range, updated_at
-                ) VALUES (?, 'osm', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                    instagram, facebook, whatsapp, opportunity_score, price_range, maps_link, updated_at
+                ) VALUES (?, 'osm', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 """, (
                     run_id, r["source_id"], r["name"], r["category"], r["latitude"], r["longitude"],
                     r["address"], r["phone"], r["website"], r["email"], r["opening_hours"],
-                    r["cuisine"], r["brand"], r["instagram"], r["facebook"], r["whatsapp"], score, r.get("price_range")
+                    r["cuisine"], r["brand"], r["instagram"], r["facebook"], r["whatsapp"], score, r.get("price_range"), r.get("maps_link")
                 ))
                 inserted_count += 1
             except sqlite3.Error as e:
