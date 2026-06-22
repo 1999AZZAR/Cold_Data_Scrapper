@@ -24,7 +24,7 @@ def log(msg, level="INFO"):
 
 def run_serpapi(query, region, api_key, limit):
     """
-    Query Google Maps data using SerpApi wrapper.
+    Query Google Maps data using SerpApi wrapper with pagination.
     """
     log("Running extraction using SerpApi Google Maps engine...")
     url = "https://serpapi.com/search.json"
@@ -36,47 +36,69 @@ def run_serpapi(query, region, api_key, limit):
         "gl": "id"
     }
     
-    try:
-        response = requests.get(url, params=params, timeout=30)
-        response.raise_for_status()
-        data = response.json()
-        
-        results = data.get("local_results", [])
-        log(f"SerpApi returned {len(results)} business results.")
-        
-        records = []
-        for item in results[:limit] if limit else results:
-            # Format GPS coordinates
-            gps = item.get("gps_coordinates", {})
-            lat = gps.get("latitude")
-            lon = gps.get("longitude")
+    effective_limit = limit if limit else 100
+    records = []
+    start = 0
+    
+    while True:
+        params["start"] = start
+        try:
+            log(f"Requesting SerpApi results at offset {start}...")
+            response = requests.get(url, params=params, timeout=30)
+            response.raise_for_status()
+            data = response.json()
             
-            # Format address
-            address = item.get("address", "")
+            results = data.get("local_results", [])
+            if not results:
+                log("No more results returned from SerpApi.")
+                break
+                
+            log(f"SerpApi returned {len(results)} business results at offset {start}.")
             
-            records.append({
-                "source_id": str(item.get("data_id", "")),
-                "name": item.get("title", "Unnamed Business"),
-                "category": item.get("type", "Business"),
-                "latitude": float(lat) if lat else None,
-                "longitude": float(lon) if lon else None,
-                "address": address,
-                "phone": item.get("phone", ""),
-                "website": item.get("website", ""),
-                "email": "", # Google Maps doesn't list email directly
-                "opening_hours": "", # SerpApi has custom hours object
-                "cuisine": "",
-                "brand": "",
-                "instagram": "",
-                "facebook": "",
-                "whatsapp": "",
-                "price_range": item.get("price", ""),
-                "maps_link": item.get("link", "")
-            })
-        return records
-    except Exception as e:
-        log(f"SerpApi request failed: {e}", "ERROR")
-        return []
+            for item in results:
+                gps = item.get("gps_coordinates", {})
+                lat = gps.get("latitude")
+                lon = gps.get("longitude")
+                address = item.get("address", "")
+                
+                records.append({
+                    "source_id": str(item.get("data_id", "")),
+                    "name": item.get("title", "Unnamed Business"),
+                    "category": item.get("type", "Business"),
+                    "latitude": float(lat) if lat else None,
+                    "longitude": float(lon) if lon else None,
+                    "address": address,
+                    "phone": item.get("phone", ""),
+                    "website": item.get("website", ""),
+                    "email": "", 
+                    "opening_hours": "", 
+                    "cuisine": "",
+                    "brand": "",
+                    "instagram": "",
+                    "facebook": "",
+                    "whatsapp": "",
+                    "price_range": item.get("price", ""),
+                    "maps_link": item.get("link", "")
+                })
+                
+                if len(records) >= effective_limit:
+                    break
+            
+            if len(records) >= effective_limit:
+                log(f"Reached collection limit of {effective_limit} records.")
+                break
+                
+            next_link = data.get("serpapi_pagination", {}).get("next")
+            if not next_link:
+                log("No next page in pagination metadata.")
+                break
+                
+            start += 20
+        except Exception as e:
+            log(f"SerpApi request failed: {e}", "ERROR")
+            break
+            
+    return records
 
 def run_playwright(query, region, limit):
     """
@@ -121,20 +143,42 @@ def run_playwright(query, region, limit):
 
         # Scroll sidebar to load results
         log("Scrolling sidebar to extract results...")
-        feed = page.locator(sidebar_selector)
         
-        # Perform scrolling
-        for _ in range(5):
-            page.mouse.wheel(0, 5000)
-            page.wait_for_timeout(1000)
+        effective_limit = limit if limit else 100
+        last_count = 0
+        scroll_attempts = 0
+        
+        while scroll_attempts < 5:
+            # Scroll feed container directly
+            page.evaluate("const feed = document.querySelector(\"div[role='feed']\"); if (feed) { feed.scrollBy(0, 10000); }")
+            page.wait_for_timeout(2000)
+            
+            # Count current cards
+            cards = page.query_selector_all("a[href*='/maps/place/']")
+            current_count = len(cards)
+            log(f"Sidebar scroll: found {current_count} places...")
+            
+            if current_count >= effective_limit:
+                break
+                
+            if current_count == last_count:
+                scroll_attempts += 1
+            else:
+                scroll_attempts = 0
+                last_count = current_count
+                
+            # Stop if Google Maps footer message is reached
+            if page.query_selector("text=\"You've reached the end of the list.\""):
+                log("Reached the end of the Google Maps list.")
+                break
             
         # Get elements
         cards = page.query_selector_all("a[href*='/maps/place/']")
-        log(f"Found {len(cards)} places on page.")
+        log(f"Found {len(cards)} places total. Beginning extraction...")
         
         count = 0
         for card in cards:
-            if limit and count >= limit:
+            if count >= effective_limit:
                 break
                 
             try:
