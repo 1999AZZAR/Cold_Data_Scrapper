@@ -31,7 +31,7 @@ def get_db_connection():
     return conn
 
 def fetch_clean_leads(run_id=None, query_filter=None, region_filter=None, search=None, show_duplicates=False,
-                      has_email=False, has_phone=False, has_website=False, min_score=None):
+                      has_email=False, has_phone=False, has_website=False, min_score=None, min_rating=None):
     """
     Fetches clean (or all) leads from SQLite database matching filters.
     """
@@ -80,6 +80,9 @@ def fetch_clean_leads(run_id=None, query_filter=None, region_filter=None, search
     if min_score is not None:
         query += " AND l.opportunity_score >= ?"
         params.append(min_score)
+    if min_rating is not None:
+        query += " AND l.rating >= ?"
+        params.append(min_rating)
         
     query += " ORDER BY l.name ASC"
     
@@ -133,6 +136,7 @@ def main():
     parser.add_argument("--has-phone", action="store_true", help="Only export leads with phone number")
     parser.add_argument("--has-website", action="store_true", help="Only export leads with website")
     parser.add_argument("--min-score", type=int, help="Only export leads with opportunity score >= min_score")
+    parser.add_argument("--min-rating", type=float, help="Only export leads with rating >= min_rating")
     parser.add_argument("--columns", help="Comma-separated list of columns to include in export")
     parser.add_argument("-f", "--format", choices=["csv", "xml", "json"], default="csv", help="Export format")
     parser.add_argument("-o", "--output", required=True, help="Output file prefix")
@@ -148,7 +152,8 @@ def main():
         has_email=args.has_email,
         has_phone=args.has_phone,
         has_website=args.has_website,
-        min_score=args.min_score
+        min_score=args.min_score,
+        min_rating=args.min_rating
     )
     log(f"Fetched {len(records)} clean leads for exporting.")
     

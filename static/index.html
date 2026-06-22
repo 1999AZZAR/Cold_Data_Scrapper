@@ -275,6 +275,10 @@ Contact: azzar.mr.zs@gmail.com for inquiries.
                 <div class="polaris-card">
                     <h2 class="text-base font-display font-bold mb-4 border-b border-slate-100 pb-2 text-slate-900"><i class="fa-solid fa-toolbox mr-2 text-slate-500"></i>Pipeline Utilities</h2>
                     <div class="flex flex-col gap-3">
+                        <button onclick="triggerAction('cleanup')" class="utility-button">
+                            <span><i class="fa-solid fa-broom mr-2 text-rose-500 text-sm"></i>Cleanup Trash Data</span>
+                            <span class="text-slate-400"><i class="fa-solid fa-chevron-right text-[10px]"></i></span>
+                        </button>
                         <button onclick="triggerAction('enrich')" class="utility-button">
                             <span><i class="fa-solid fa-share-nodes mr-2 text-indigo-500 text-sm"></i>Enrich Socials (GSE/DDG)</span>
                             <span class="text-slate-400"><i class="fa-solid fa-chevron-right text-[10px]"></i></span>
@@ -327,6 +331,16 @@ Contact: azzar.mr.zs@gmail.com for inquiries.
                                     <option value="">All Scores</option>
                                     <option value="40">&gt;= 40 (Medium/High)</option>
                                     <option value="70">&gt;= 70 (High Only)</option>
+                                </select>
+                            </div>
+                            <div class="mt-2 font-mono">
+                                <span class="block text-[10px] text-slate-500 font-bold uppercase mb-1">Min Rating</span>
+                                <select id="export-min-rating" class="w-full bg-white border border-[#babfc3] text-[#202223] py-1 px-2 rounded cursor-pointer">
+                                    <option value="">All Ratings</option>
+                                    <option value="4.5">&gt;= 4.5</option>
+                                    <option value="4.0">&gt;= 4.0</option>
+                                    <option value="3.5">&gt;= 3.5</option>
+                                    <option value="3.0">&gt;= 3.0</option>
                                 </select>
                             </div>
                         </div>

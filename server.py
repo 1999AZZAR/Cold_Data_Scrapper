@@ -92,7 +92,11 @@ def get_runs():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM runs ORDER BY id DESC")
+        cursor.execute("""
+            SELECT r.*, 
+                   (SELECT COUNT(*) FROM leads l WHERE l.run_id = r.id AND l.duplicate_of IS NULL) as lead_count
+            FROM runs r ORDER BY r.id DESC
+        """)
         runs = [dict(row) for row in cursor.fetchall()]
         conn.close()
         return jsonify(runs)
@@ -185,13 +189,17 @@ def rerun_run(run_id):
         conn.close()
         
         cmd_args = ["run-all", "-q", query, "-r", region, "-o", f"data_{run_id}", "--run-id", str(run_id)]
-        if reuse_search:
-            if search_id:
-                cmd_args += ["--search-id", search_id]
-            else:
-                cmd_args += ["--reuse-search"]
         if limit:
+            # With explicit limit, safe to reuse archive/search_id
+            if reuse_search:
+                if search_id:
+                    cmd_args += ["--search-id", search_id]
+                else:
+                    cmd_args += ["--reuse-search"]
             cmd_args += ["-l", str(limit)]
+        elif reuse_search:
+            # Unlimited + reuse: only use local cache (archive is per-page, capped at 20)
+            cmd_args += ["--reuse-search"]
             
         thread = threading.Thread(target=run_pipeline_async, args=(cmd_args, run_id))
         thread.start()
@@ -253,7 +261,7 @@ def trigger_action():
     data = request.json or {}
     action = data.get("action") # enrich, validate, dedup
     
-    if action not in ("enrich", "validate", "dedup"):
+    if action not in ("enrich", "validate", "dedup", "cleanup"):
         return jsonify({"error": "Invalid action"}), 400
         
     try:
@@ -281,6 +289,7 @@ def download_export():
     has_phone = request.args.get("has_phone", "false").lower() == "true"
     has_website = request.args.get("has_website", "false").lower() == "true"
     min_score = request.args.get("min_score")
+    min_rating = request.args.get("min_rating")
     columns = request.args.get("columns")
     
     if format_type not in ("csv", "xml", "json"):
@@ -319,6 +328,8 @@ def download_export():
         cmd += ["--has-website"]
     if min_score:
         cmd += ["--min-score", min_score]
+    if min_rating:
+        cmd += ["--min-rating", min_rating]
     if columns:
         cmd += ["--columns", columns]
         

@@ -138,7 +138,7 @@ async function loadRuns() {
                         'bg-rose-50 text-rose-700 border-rose-200/50'
                     }">${run.status}</span>
                 </td>
-                <td class="p-3 border-b border-slate-100 text-slate-700 font-semibold">${run.results_count} leads</td>
+                <td class="p-3 border-b border-slate-100 text-slate-700 font-semibold">${run.lead_count} leads</td>
                 <td class="p-3 border-b border-slate-100 text-slate-400 font-sans">${run.created_at}</td>
                 <td class="p-3 border-b border-slate-100 font-mono text-[10px]">
                     <div class="flex items-center gap-2">
@@ -227,6 +227,7 @@ function rerunRun(runId) {
                     showToast(`Scraper rerun (ID #${res.run_id}) started in the background!`, "success");
                     loadRuns();
                     loadStatus();
+                    closeRerunModal();
                     
                     const currentFilter = document.getElementById("run-filter").value;
                     if (currentFilter == runId) {
@@ -662,6 +663,7 @@ function triggerExport() {
     const hasPhone = document.getElementById("export-has-phone").checked;
     const hasWebsite = document.getElementById("export-has-website").checked;
     const minScore = document.getElementById("export-min-score").value;
+    const minRating = document.getElementById("export-min-rating").value;
     
     // Columns selection
     let colList = ["id", "name", "category", "address", "opportunity_score", "source", "source_id"];
@@ -683,6 +685,7 @@ function triggerExport() {
     if (runId) url += `&run_id=${runId}`;
     if (search) url += `&search=${encodeURIComponent(search)}`;
     if (minScore) url += `&min_score=${minScore}`;
+    if (minRating) url += `&min_rating=${minRating}`;
     
     window.location.href = url;
 }

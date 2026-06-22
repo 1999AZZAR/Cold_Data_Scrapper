@@ -68,14 +68,17 @@ def main():
     # 6. dedup
     subparsers.add_parser("dedup", help="Run Deduplicator")
     
-    # 7. export
+    # 7. cleanup
+    subparsers.add_parser("cleanup", help="Run Trash Data Cleanup")
+    
+    # 8. export
     p_exp = subparsers.add_parser("export", help="Run Export Converter")
     p_exp.add_argument("-o", "--output", required=True)
     p_exp.add_argument("--run-id", type=int)
     p_exp.add_argument("-q", "--query")
     p_exp.add_argument("-r", "--region")
     
-    # 8. run-all
+    # 9. run-all
     p_all = subparsers.add_parser("run-all", help="Sequence entire pipeline end-to-end")
     p_all.add_argument("-q", "--query", required=True)
     p_all.add_argument("-r", "--region", required=True)
@@ -112,8 +115,20 @@ def main():
         if args.output: cmd += ["-o", args.output]
         if args.limit: cmd += ["-l", str(args.limit)]
         if args.run_id: cmd += ["--run-id", str(args.run_id)]
-        out_json = run_command(cmd)
-        
+        res = run_command(cmd)
+        out_json = res
+
+        if res["status"] == "success":
+            log("Auto-running cleanup...")
+            run_command([sys.executable, "pipeline/cleanup_trash.py"])
+            log("Auto-running enrich...")
+            run_command([sys.executable, "pipeline/enricher_socials.py"])
+            log("Auto-running validate...")
+            run_command([sys.executable, "pipeline/validator_contacts.py"])
+            log("Auto-running dedup...")
+            run_command([sys.executable, "pipeline/deduplicator.py"])
+            log("Post-processing complete.")
+
     elif args.command == "extract-gmaps":
         cmd = [sys.executable, "pipeline/extractor_gmaps.py", "-q", args.query, "-r", args.region]
         if args.key: cmd += ["-k", args.key]
@@ -122,8 +137,20 @@ def main():
         if args.run_id: cmd += ["--run-id", str(args.run_id)]
         if args.search_id: cmd += ["--search-id", args.search_id]
         if args.reuse_search: cmd += ["--reuse-search"]
-        out_json = run_command(cmd)
-        
+        res = run_command(cmd)
+        out_json = res
+
+        if res["status"] == "success":
+            log("Auto-running cleanup...")
+            run_command([sys.executable, "pipeline/cleanup_trash.py"])
+            log("Auto-running enrich...")
+            run_command([sys.executable, "pipeline/enricher_socials.py"])
+            log("Auto-running validate...")
+            run_command([sys.executable, "pipeline/validator_contacts.py"])
+            log("Auto-running dedup...")
+            run_command([sys.executable, "pipeline/deduplicator.py"])
+            log("Post-processing complete.")
+
     elif args.command == "enrich":
         out_json = run_command([sys.executable, "pipeline/enricher_socials.py"])
         
@@ -132,6 +159,9 @@ def main():
         
     elif args.command == "dedup":
         out_json = run_command([sys.executable, "pipeline/deduplicator.py"])
+        
+    elif args.command == "cleanup":
+        out_json = run_command([sys.executable, "pipeline/cleanup_trash.py"])
         
     elif args.command == "export":
         cmd = [sys.executable, "pipeline/export_converter.py", "-o", args.output]
@@ -163,23 +193,28 @@ def main():
         steps.append({"step": "extract-gmaps", "result": res_gmaps})
         
         if res_osm["status"] == "success" or res_gmaps["status"] == "success":
-            # 3. Run Social Media Enricher
-            log(f"Step 3/6: Running Social Enricher...")
+            # 3. Run Trash Cleanup
+            log(f"Step 3/7: Running Trash Cleanup...")
+            res_cleanup = run_command([sys.executable, "pipeline/cleanup_trash.py"])
+            steps.append({"step": "cleanup", "result": res_cleanup})
+            
+            # 4. Run Social Media Enricher
+            log(f"Step 4/7: Running Social Enricher...")
             res_enrich = run_command([sys.executable, "pipeline/enricher_socials.py"])
             steps.append({"step": "enrich", "result": res_enrich})
             
-            # 4. Run Contact Validator
-            log(f"Step 4/6: Running Contacts Validator...")
+            # 5. Run Contact Validator
+            log(f"Step 5/7: Running Contacts Validator...")
             res_val = run_command([sys.executable, "pipeline/validator_contacts.py"])
             steps.append({"step": "validate", "result": res_val})
             
-            # 5. Run Deduplicator
-            log(f"Step 5/6: Running Deduplicator...")
+            # 6. Run Deduplicator
+            log(f"Step 6/7: Running Deduplicator...")
             res_dedup = run_command([sys.executable, "pipeline/deduplicator.py"])
             steps.append({"step": "dedup", "result": res_dedup})
             
-            # 6. Run Export Converter
-            log(f"Step 6/6: Exporting results...")
+            # 7. Run Export Converter
+            log(f"Step 7/7: Exporting results...")
             exp_cmd = [sys.executable, "pipeline/export_converter.py", "-o", args.output, "-q", args.query, "-r", args.region]
             res_exp = run_command(exp_cmd)
             steps.append({"step": "export", "result": res_exp})

@@ -314,7 +314,7 @@ def save_to_db(records, query_name, region_name, run_id=None):
 
         # Update run status
         cursor.execute(
-            "UPDATE runs SET status='completed', results_count=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
+            "UPDATE runs SET status='completed', results_count=results_count+?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
             (inserted_count, run_id)
         )
         conn.commit()
