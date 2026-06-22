@@ -156,7 +156,7 @@ def rerun_run(run_id):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT query, region FROM runs WHERE id = ?", (run_id,))
+        cursor.execute("SELECT query, region, search_id FROM runs WHERE id = ?", (run_id,))
         row = cursor.fetchone()
         
         if not row:
@@ -165,6 +165,7 @@ def rerun_run(run_id):
             
         query = row["query"]
         region = row["region"]
+        search_id = row["search_id"]
         
         # Clear out old leads associated with this run_id
         cursor.execute("DELETE FROM leads WHERE run_id = ?", (run_id,))
@@ -177,6 +178,8 @@ def rerun_run(run_id):
         conn.close()
         
         cmd_args = ["run-all", "-q", query, "-r", region, "-o", f"data_{run_id}", "--run-id", str(run_id)]
+        if search_id:
+            cmd_args += ["--search-id", search_id]
         if limit:
             cmd_args += ["-l", str(limit)]
             

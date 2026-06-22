@@ -22,10 +22,58 @@ DB_PATH = "data/cold_data.db"
 def log(msg, level="INFO"):
     print(f"[{level}] {msg}")
 
-def run_serpapi(query, region, api_key, limit):
+def run_serpapi(query, region, api_key, limit, search_id=None):
     """
-    Query Google Maps data using SerpApi wrapper with pagination.
+    Query Google Maps data using SerpApi wrapper with pagination,
+    or retrieve past results from the search archive if search_id is specified.
     """
+    if search_id:
+        log(f"Retrieving past search from archive using Search ID: {search_id}...")
+        url = f"https://serpapi.com/searches/{search_id}.json"
+        params = {"api_key": api_key}
+        try:
+            response = requests.get(url, params=params, timeout=30)
+            response.raise_for_status()
+            data = response.json()
+            
+            if "error" in data:
+                log(f"SerpApi archive returned error: {data['error']}", "ERROR")
+                return [], search_id
+                
+            results = data.get("local_results", [])
+            log(f"SerpApi archive returned {len(results)} business results.")
+            
+            records = []
+            for item in results[:limit] if limit else results:
+                gps = item.get("gps_coordinates", {})
+                lat = gps.get("latitude")
+                lon = gps.get("longitude")
+                address = item.get("address", "")
+                
+                records.append({
+                    "source_id": str(item.get("data_id", "")),
+                    "name": item.get("title", "Unnamed Business"),
+                    "category": item.get("type", "Business"),
+                    "latitude": float(lat) if lat else None,
+                    "longitude": float(lon) if lon else None,
+                    "address": address,
+                    "phone": item.get("phone", ""),
+                    "website": item.get("website", ""),
+                    "email": "", 
+                    "opening_hours": "", 
+                    "cuisine": "",
+                    "brand": "",
+                    "instagram": "",
+                    "facebook": "",
+                    "whatsapp": "",
+                    "price_range": item.get("price", ""),
+                    "maps_link": item.get("link", "")
+                })
+            return records, search_id
+        except Exception as e:
+            log(f"Failed to retrieve from SerpApi archive: {e}", "ERROR")
+            return [], None
+
     log("Running extraction using SerpApi Google Maps engine...")
     url = "https://serpapi.com/search.json"
     params = {
@@ -39,6 +87,7 @@ def run_serpapi(query, region, api_key, limit):
     effective_limit = limit if limit else 100
     records = []
     start = 0
+    retrieved_search_id = None
     
     while True:
         params["start"] = start
@@ -47,6 +96,11 @@ def run_serpapi(query, region, api_key, limit):
             response = requests.get(url, params=params, timeout=30)
             response.raise_for_status()
             data = response.json()
+            
+            if not retrieved_search_id:
+                retrieved_search_id = data.get("search_metadata", {}).get("id")
+                if retrieved_search_id:
+                    log(f"SerpApi Search ID recorded: {retrieved_search_id}")
             
             results = data.get("local_results", [])
             if not results:
@@ -98,7 +152,7 @@ def run_serpapi(query, region, api_key, limit):
             log(f"SerpApi request failed: {e}", "ERROR")
             break
             
-    return records
+    return records, retrieved_search_id
 
 def run_playwright(query, region, limit):
     """
@@ -265,7 +319,7 @@ def get_db_connection():
     conn.execute("PRAGMA busy_timeout=30000;")
     return conn
 
-def save_to_db(records, query_name, region_name, run_id=None):
+def save_to_db(records, query_name, region_name, run_id=None, search_id=None):
     """
     Saves records to SQLite database.
     """
@@ -279,15 +333,21 @@ def save_to_db(records, query_name, region_name, run_id=None):
     try:
         if run_id is None:
             cursor.execute(
-                "INSERT INTO runs (query, region, status) VALUES (?, ?, 'running')",
-                (query_name, region_name)
+                "INSERT INTO runs (query, region, status, search_id) VALUES (?, ?, 'running', ?)",
+                (query_name, region_name, search_id)
             )
             run_id = cursor.lastrowid
         else:
-            cursor.execute(
-                "UPDATE runs SET status='running', updated_at=CURRENT_TIMESTAMP WHERE id=?",
-                (run_id,)
-            )
+            if search_id:
+                cursor.execute(
+                    "UPDATE runs SET status='running', search_id=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
+                    (search_id, run_id)
+                )
+            else:
+                cursor.execute(
+                    "UPDATE runs SET status='running', updated_at=CURRENT_TIMESTAMP WHERE id=?",
+                    (run_id,)
+                )
 
         inserted_count = 0
         for r in records:
@@ -316,10 +376,16 @@ def save_to_db(records, query_name, region_name, run_id=None):
             except sqlite3.Error as e:
                 log(f"Failed to insert record {r['name']}: {e}", "WARNING")
 
-        cursor.execute(
-            "UPDATE runs SET status='completed', results_count=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
-            (inserted_count, run_id)
-        )
+        if search_id:
+            cursor.execute(
+                "UPDATE runs SET status='completed', results_count=?, search_id=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
+                (inserted_count, search_id, run_id)
+            )
+        else:
+            cursor.execute(
+                "UPDATE runs SET status='completed', results_count=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
+                (inserted_count, run_id)
+            )
         conn.commit()
         log(f"Saved {inserted_count} records to SQLite database (Run ID: {run_id}).")
         return run_id
@@ -338,14 +404,16 @@ def main():
     parser.add_argument("-l", "--limit", type=int, help="Limit number of results")
     parser.add_argument("-o", "--output", help="Output file prefix (default: region_query)")
     parser.add_argument("--run-id", type=int, help="Optional database run ID to associate data and update status")
+    parser.add_argument("--search-id", help="Optional SerpApi search ID to fetch from search archive")
     
     args = parser.parse_args()
     
     api_key = args.key or os.environ.get("SERPAPI_KEY")
     records = []
+    retrieved_search_id = None
     
     if api_key:
-        records = run_serpapi(args.query, args.region, api_key, args.limit)
+        records, retrieved_search_id = run_serpapi(args.query, args.region, api_key, args.limit, search_id=args.search_id)
     else:
         # Fallback to local browser Playwright
         records = run_playwright(args.query, args.region, args.limit)
@@ -355,7 +423,7 @@ def main():
         sys.exit(1)
         
     # Save to SQLite
-    save_to_db(records, args.query, args.region, run_id=args.run_id)
+    save_to_db(records, args.query, args.region, run_id=args.run_id, search_id=retrieved_search_id)
     
     # Export files
     output_prefix = args.output or f"{args.region.lower().replace(' ', '_')}_{args.query.lower().replace(' ', '_')}_gmaps"

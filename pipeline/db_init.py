@@ -32,6 +32,7 @@ def init_db():
         region TEXT NOT NULL,
         status TEXT DEFAULT 'pending',
         results_count INTEGER DEFAULT 0,
+        search_id TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
@@ -84,6 +85,11 @@ def init_db():
 
     try:
         cursor.execute("ALTER TABLE leads ADD COLUMN maps_link TEXT;")
+    except sqlite3.OperationalError:
+        pass
+
+    try:
+        cursor.execute("ALTER TABLE runs ADD COLUMN search_id TEXT;")
     except sqlite3.OperationalError:
         pass
 

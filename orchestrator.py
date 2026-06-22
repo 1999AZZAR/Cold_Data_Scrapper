@@ -50,6 +50,7 @@ def main():
     p_gm.add_argument("-l", "--limit", type=int)
     p_gm.add_argument("-o", "--output")
     p_gm.add_argument("--run-id", type=int)
+    p_gm.add_argument("--search-id")
     
     # 4. enrich
     subparsers.add_parser("enrich", help="Run Social Contacts Enricher")
@@ -75,6 +76,7 @@ def main():
     p_all.add_argument("-l", "--limit", type=int)
     p_all.add_argument("-k", "--key")
     p_all.add_argument("--run-id", type=int)
+    p_all.add_argument("--search-id")
     
     args = parser.parse_args()
     
@@ -100,6 +102,7 @@ def main():
         if args.limit: cmd += ["-l", str(args.limit)]
         if args.output: cmd += ["-o", args.output]
         if args.run_id: cmd += ["--run-id", str(args.run_id)]
+        if args.search_id: cmd += ["--search-id", args.search_id]
         out_json = run_command(cmd)
         
     elif args.command == "enrich":
@@ -135,6 +138,7 @@ def main():
         if args.key: gmaps_cmd += ["-k", args.key]
         if args.limit: gmaps_cmd += ["-l", str(args.limit)]
         if args.run_id: gmaps_cmd += ["--run-id", str(args.run_id)]
+        if args.search_id: gmaps_cmd += ["--search-id", args.search_id]
         res_gmaps = run_command(gmaps_cmd)
         steps.append({"step": "extract-gmaps", "result": res_gmaps})
         
