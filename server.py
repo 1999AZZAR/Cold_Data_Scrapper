@@ -145,6 +145,43 @@ def delete_run(run_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route("/api/runs/<int:run_id>/rerun", methods=["POST"])
+def rerun_run(run_id):
+    """
+    Reruns an existing scraper run using its query and region.
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT query, region FROM runs WHERE id = ?", (run_id,))
+        row = cursor.fetchone()
+        conn.close()
+        
+        if not row:
+            return jsonify({"error": "Run not found"}), 404
+            
+        query = row["query"]
+        region = row["region"]
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO runs (query, region, status) VALUES (?, ?, 'running')",
+            (query, region)
+        )
+        new_run_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        
+        cmd_args = ["run-all", "-q", query, "-r", region, "-o", f"data_{new_run_id}", "--run-id", str(new_run_id)]
+        
+        thread = threading.Thread(target=run_pipeline_async, args=(cmd_args, new_run_id))
+        thread.start()
+        
+        return jsonify({"status": "started", "run_id": new_run_id})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/api/trigger", methods=["POST"])
 def trigger_run():
     """

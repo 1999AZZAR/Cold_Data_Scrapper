@@ -128,6 +128,10 @@ async function loadRuns() {
                 <td class="p-3 border-b border-slate-100 text-slate-400 font-sans">${run.created_at}</td>
                 <td class="p-3 border-b border-slate-100 font-mono text-[10px]">
                     <div class="flex items-center gap-2">
+                        <button onclick="event.stopPropagation(); rerunRun(${run.id})" class="text-indigo-600 hover:text-indigo-800 font-bold hover:underline transition duration-150">
+                            <i class="fa-solid fa-rotate-right mr-0.5"></i>Rerun
+                        </button>
+                        <span class="text-slate-300">|</span>
                         <a href="/api/export?run_id=${run.id}&format=csv" onclick="event.stopPropagation();" class="text-emerald-600 hover:text-emerald-800 font-bold hover:underline transition duration-150">
                             <i class="fa-solid fa-file-csv mr-0.5"></i>CSV
                         </a>
@@ -181,6 +185,26 @@ async function deleteRun(runId) {
             }
         }
     );
+}
+
+// Rerun a specific run
+async function rerunRun(runId) {
+    try {
+        const response = await fetch(`/api/runs/${runId}/rerun`, {
+            method: "POST"
+        });
+        const res = await response.json();
+        
+        if (res.status === "started") {
+            showToast(`Scraper rerun (ID #${res.run_id}) started in the background!`, "success");
+            loadRuns();
+            loadStatus();
+        } else {
+            showToast(`Error: ${res.error}`, "error");
+        }
+    } catch (err) {
+        showToast(`Failed to trigger rerun: ${err}`, "error");
+    }
 }
 
 // Fetch leads list
