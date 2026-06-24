@@ -20,21 +20,16 @@ import requests
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 
+try:
+    from utils import log, get_db_connection, retry_request
+except ImportError:
+    from pipeline.utils import log, get_db_connection, retry_request
+
 load_dotenv()
 
 DB_PATH = "data/cold_data.db"
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 HEADERS = {'User-Agent': USER_AGENT}
-
-def log(msg, level="INFO"):
-    print(f"[{level}] {msg}")
-
-def get_db_connection():
-    conn = sqlite3.connect(DB_PATH, timeout=30)
-    conn.execute("PRAGMA journal_mode=WAL;")
-    conn.execute("PRAGMA synchronous=NORMAL;")
-    conn.execute("PRAGMA busy_timeout=30000;")
-    return conn
 
 def search_social_google_gse(name, region, platform):
     """
@@ -58,8 +53,7 @@ def search_social_google_gse(name, region, platform):
     
     try:
         log(f"Searching Google GSE for {platform}: '{name}' in '{region}'...")
-        response = requests.get(url, params=params, timeout=10)
-        response.raise_for_status()
+        response = retry_request("GET", url, params=params, timeout=10, max_retries=2)
         data = response.json()
         items = data.get('items', [])
         
@@ -110,8 +104,7 @@ def scrape_website(url):
         
     try:
         log(f"Scraping website: {url}...")
-        response = requests.get(url, headers=HEADERS, timeout=10)
-        response.raise_for_status()
+        response = retry_request("GET", url, headers=HEADERS, timeout=10, max_retries=2)
         return extract_contacts_from_html(response.text, url)
     except Exception as e:
         log(f"Website scrape failed: {e}", "WARNING")
@@ -127,15 +120,13 @@ def search_social_duckduckgo(name, region, platform):
     
     try:
         log(f"Searching DDG for {platform}: '{name}' in '{region}'...")
-        response = requests.get(url, headers=HEADERS, timeout=10)
-        response.raise_for_status()
+        response = retry_request("GET", url, headers=HEADERS, timeout=10, max_retries=2)
         
         soup = BeautifulSoup(response.text, 'html.parser')
         links = soup.find_all('a', class_='result__a', href=True)
         
         for link in links:
             href = link['href']
-            # Decode DDG redirect URL if necessary
             if "uddg=" in href:
                 parsed = urllib.parse.urlparse(href)
                 query_params = urllib.parse.parse_qs(parsed.query)
@@ -150,28 +141,45 @@ def search_social_duckduckgo(name, region, platform):
         
     return ""
 
+def search_social_bing(name, region, platform):
+    query = f"{name} {region} {platform}"
+    url = f"https://www.bing.com/search?q={urllib.parse.quote(query)}"
+    try:
+        log(f"Searching Bing for {platform}: '{name}' in '{region}'...")
+        response = retry_request("GET", url, headers=HEADERS, timeout=10, max_retries=2)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        for a in soup.find_all('a', href=True):
+            href = a['href']
+            if f"{platform}.com/" in href.lower() and "/p/" not in href.lower() and "/tags/" not in href.lower():
+                log(f"Discovered {platform} link via Bing: {href}")
+                return href
+    except Exception as e:
+        log(f"Bing search failed for {platform}: {e}", "WARNING")
+    return ""
+
+
 def enrich_lead(lead_id, name, address, website):
-    """
-    Enriches a single lead using website scraping and/or search queries.
-    """
     email, instagram, facebook, whatsapp = "", "", "", ""
-    
-    # 1. Try website scraping if URL exists
+
     if website:
         email, instagram, facebook, whatsapp = scrape_website(website)
-        
+
     region = address.split(",")[-1].strip() if address else "Indonesia"
 
     if not instagram:
         instagram = search_social_google_gse(name, region, "instagram")
         if not instagram:
             instagram = search_social_duckduckgo(name, region, "instagram")
-            
+            if not instagram:
+                instagram = search_social_bing(name, region, "instagram")
+
     if not facebook:
         facebook = search_social_google_gse(name, region, "facebook")
         if not facebook:
             facebook = search_social_duckduckgo(name, region, "facebook")
-        
+            if not facebook:
+                facebook = search_social_bing(name, region, "facebook")
+
     return email, instagram, facebook, whatsapp
 
 def main():

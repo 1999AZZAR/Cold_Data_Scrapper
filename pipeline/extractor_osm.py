@@ -21,12 +21,21 @@ import xml.dom.minidom as minidom
 import csv
 from urllib.parse import quote
 
-# Configuration & Overpass server list for redundancy
+try:
+    from utils import log, retry_request
+except ImportError:
+    from pipeline.utils import log, retry_request
+
 OVERPASS_SERVERS = [
     "https://lz4.overpass-api.de/api/interpreter",
     "https://z.overpass-api.de/api/interpreter",
     "https://overpass-api.de/api/interpreter",
     "https://overpass.kumi.systems/api/interpreter"
+]
+
+GEOCODING_SERVERS = [
+    {"name": "Nominatim",  "url": "https://nominatim.openstreetmap.org", "type": "nominatim"},
+    {"name": "Photon",     "url": "https://photon.komoot.io",            "type": "photon"},
 ]
 
 USER_AGENT = "ColdDataGathererAzzar/1.0 (azzar.dev@gmail.com)"
@@ -37,59 +46,74 @@ HEADERS = {
 
 DB_PATH = "data/cold_data.db"
 
-def log(msg, level="INFO"):
-    print(f"[{level}] {msg}")
-
-def geocode_region(region_name):
-    """
-    Geocodes region name to find OSM area ID or bounding box coordinates.
-    """
-    log(f"Geocoding region: '{region_name}' using Nominatim...")
-    url = f"https://nominatim.openstreetmap.org/search?q={quote(region_name)}&format=json&limit=5"
-    
-    try:
-        response = requests.get(url, headers=HEADERS, timeout=15)
-        response.raise_for_status()
-        results = response.json()
-        
-        if not results:
-            log("No geocoding results found.", "WARNING")
-            return None
-            
-        best_match = None
+def _parse_nominatim_results(results, region_name):
+    if not results:
+        return None
+    best_match = None
+    for item in results:
+        if item.get("osm_type") == "relation":
+            best_match = item
+            break
+    if not best_match:
         for item in results:
-            if item.get("osm_type") == "relation":
+            if item.get("osm_type") == "way":
                 best_match = item
                 break
-        if not best_match:
-            for item in results:
-                if item.get("osm_type") == "way":
-                    best_match = item
-                    break
-        if not best_match:
-            best_match = results[0]
-            
-        osm_id = int(best_match["osm_id"])
-        osm_type = best_match["osm_type"]
-        display_name = best_match.get("display_name", "")
-        bbox = [float(x) for x in best_match.get("boundingbox", [])]
-        
-        log(f"Matched location: {display_name}")
-        
-        area_id = None
-        if osm_type == "relation":
-            area_id = osm_id + 3600000000
-        elif osm_type == "way":
-            area_id = osm_id + 2400000000
-            
-        return {
-            "area_id": area_id,
-            "bbox": (bbox[0], bbox[2], bbox[1], bbox[3]) if len(bbox) == 4 else None,
-            "display_name": display_name
-        }
-    except Exception as e:
-        log(f"Geocoding failed: {e}", "ERROR")
+    if not best_match:
+        best_match = results[0]
+    osm_id = int(best_match["osm_id"])
+    osm_type = best_match["osm_type"]
+    display_name = best_match.get("display_name", "")
+    bbox = [float(x) for x in best_match.get("boundingbox", [])]
+    log(f"Matched location: {display_name}")
+    area_id = None
+    if osm_type == "relation":
+        area_id = osm_id + 3600000000
+    elif osm_type == "way":
+        area_id = osm_id + 2400000000
+    return {
+        "area_id": area_id,
+        "bbox": (bbox[0], bbox[2], bbox[1], bbox[3]) if len(bbox) == 4 else None,
+        "display_name": display_name
+    }
+
+
+def _parse_photon_results(results, region_name):
+    features = results.get("features", [])
+    if not features:
         return None
+    best = features[0]
+    props = best.get("properties", {})
+    geom = best.get("geometry", {})
+    coords = geom.get("coordinates", [0, 0])
+    display_name = props.get("name", region_name)
+    log(f"Matched via Photon: {display_name}")
+    return {
+        "area_id": None,
+        "bbox": (coords[1], coords[0], coords[1], coords[0]),
+        "display_name": display_name
+    }
+
+
+def geocode_region(region_name):
+    for server in GEOCODING_SERVERS:
+        log(f"Geocoding via {server['name']}...")
+        try:
+            if server["type"] == "nominatim":
+                url = f"{server['url']}/search?q={quote(region_name)}&format=json&limit=5"
+                response = retry_request("GET", url, headers=HEADERS, timeout=15, max_retries=2)
+                result = _parse_nominatim_results(response.json(), region_name)
+            elif server["type"] == "photon":
+                url = f"{server['url']}/api/?q={quote(region_name)}&limit=1"
+                response = retry_request("GET", url, headers=HEADERS, timeout=15, max_retries=2)
+                result = _parse_photon_results(response.json(), region_name)
+            if result:
+                return result
+        except Exception as e:
+            log(f"Geocoding via {server['name']} failed: {e}", "WARNING")
+            continue
+    log("All geocoding servers failed.", "ERROR")
+    return None
 
 def build_overpass_query(area_info, category, custom_query=None):
     """
@@ -149,21 +173,17 @@ def build_overpass_query(area_info, category, custom_query=None):
     return "\n".join(query_parts)
 
 def fetch_overpass_data(query):
-    """
-    Executes the Overpass QL query, rotating through available servers on failure.
-    """
     for url in OVERPASS_SERVERS:
         log(f"Querying Overpass API server: {url}...")
         try:
-            response = requests.post(url, data={'data': query}, headers=HEADERS, timeout=30)
+            response = retry_request("POST", url, data={"data": query}, headers=HEADERS, timeout=30, max_retries=2)
             if response.status_code == 429:
                 log("Server returned 429 (Rate Limit). Trying next mirror...", "WARNING")
                 continue
-            response.raise_for_status()
             return response.json()
         except Exception as e:
             log(f"Error on {url}: {e}", "WARNING")
-            
+
     raise RuntimeError("All Overpass API servers failed.")
 
 def parse_elements(elements):
@@ -384,7 +404,7 @@ def main():
     custom = args.query if "=" in args.query else None
     query = build_overpass_query(area_info, args.query, custom_query=custom)
     
-    # Fetch data
+    # Fetch data via Overpass with retry + server rotation
     try:
         raw_data = fetch_overpass_data(query)
     except Exception as e:

@@ -23,17 +23,12 @@ import xml.etree.ElementTree as ET
 import xml.dom.minidom as minidom
 import requests
 
+try:
+    from utils import log, get_db_connection, retry_request
+except ImportError:
+    from pipeline.utils import log, get_db_connection, retry_request
+
 DB_PATH = "data/cold_data.db"
-
-def log(msg, level="INFO"):
-    print(f"[{level}] {msg}")
-
-def get_db_connection():
-    conn = sqlite3.connect(DB_PATH, timeout=30)
-    conn.execute("PRAGMA journal_mode=WAL;")
-    conn.execute("PRAGMA synchronous=NORMAL;")
-    conn.execute("PRAGMA busy_timeout=30000;")
-    return conn
 
 def get_cached_search(query, region, engine="google_maps"):
     if not os.path.exists(DB_PATH):
@@ -128,14 +123,13 @@ def run_serpapi(query, region, api_key, limit, search_id=None):
     """
     engine = "google_maps"
 
-    # 1. Direct search_id → fetch from SerpAPI archive
-    if search_id:
+    # 1. Direct search_id -> fetch from SerpAPI archive
+    if search_id and api_key:
         log(f"Fetching from SerpAPI archive: search_id={search_id}...")
         url = f"https://serpapi.com/searches/{search_id}.json"
         params = {"api_key": api_key}
         try:
-            response = requests.get(url, params=params, timeout=30)
-            response.raise_for_status()
+            response = retry_request("GET", url, params=params, timeout=30)
             data = response.json()
             if "error" in data:
                 log(f"SerpApi archive error: {data['error']}", "ERROR")
@@ -156,6 +150,9 @@ def run_serpapi(query, region, api_key, limit, search_id=None):
         return records, sid
 
     # 3. Fresh search with auto-caching per page
+    if not api_key:
+        return [], None
+
     log("Running fresh SerpAPI Google Maps search...")
     url = "https://serpapi.com/search.json"
     params = {
@@ -175,8 +172,7 @@ def run_serpapi(query, region, api_key, limit, search_id=None):
         params["start"] = start
         try:
             log(f"Requesting SerpAPI results at offset {start}...")
-            response = requests.get(url, params=params, timeout=30)
-            response.raise_for_status()
+            response = retry_request("GET", url, params=params, timeout=30)
             data = response.json()
 
             page_search_id = data.get("search_metadata", {}).get("id")
@@ -191,7 +187,6 @@ def run_serpapi(query, region, api_key, limit, search_id=None):
 
             log(f"SerpApi returned {len(results)} results at offset {start}.")
 
-            # Cache this page's full response
             cache_search(page_search_id, query, region, engine, start, len(results), data)
 
             records.extend(parse_serpapi_results(data))
@@ -493,13 +488,14 @@ def main():
     api_key = args.key or os.environ.get("SERPAPI_KEY")
     records = []
     retrieved_search_id = None
-    
-    # Auto-reuse: always check cache unless explicit search_id provided
-    if api_key:
-        records, retrieved_search_id = run_serpapi(args.query, args.region, api_key, args.limit, search_id=args.search_id)
-    else:
+
+    # Always try SerpApi (checks cache first; fresh search only if key exists)
+    records, retrieved_search_id = run_serpapi(args.query, args.region, api_key, args.limit, search_id=args.search_id)
+
+    # Fallback to Playwright if SerpApi returned nothing
+    if not records:
         records = run_playwright(args.query, args.region, args.limit)
-        
+
     if not records:
         log("No records retrieved. Please provide a SERPAPI_KEY or install playwright.", "ERROR")
         sys.exit(1)

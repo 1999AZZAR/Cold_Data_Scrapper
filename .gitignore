@@ -23,6 +23,9 @@ __pycache__/
 tmp/
 .vscode/
 .idea/
+.claude/
+.opencode/
+.kilo/
 .DS_Store
 
 # Virtual Environments
